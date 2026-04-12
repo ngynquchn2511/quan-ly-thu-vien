@@ -500,10 +500,10 @@ class DashboardWindow(QWidget):
         # Stacked pages
         self.stack = QStackedWidget()
         self.stack.setStyleSheet("background: transparent;")
-
+        from gui.book_gui import BookWindow
         self.screens = {
             "dashboard": DashboardScreen(),
-            "books":     PlaceholderScreen("Quản lý Sách",    "Sẽ được xây dựng ở bước tiếp theo"),
+            "books":     BookWindow(),
             "students":  PlaceholderScreen("Quản lý Độc giả", "Sẽ được xây dựng ở bước tiếp theo"),
             "borrow":    PlaceholderScreen("Mượn / Trả Sách", "Sẽ được xây dựng ở bước tiếp theo"),
             "reports":   PlaceholderScreen("Báo cáo",         "Sẽ được xây dựng ở bước tiếp theo"),
