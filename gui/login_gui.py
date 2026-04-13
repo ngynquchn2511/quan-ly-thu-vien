@@ -39,7 +39,7 @@ STYLE_INPUT = f"""
         border: 1.5px solid {COLOR_BORDER};
         border-radius: 8px;
         padding: 10px 14px;
-        font-size: 13px;
+        font-size: 15px;
         color: {COLOR_TEXT_DARK};
     }}
     QLineEdit:focus {{
@@ -56,7 +56,7 @@ STYLE_BTN = f"""
         color: white;
         border: none;
         border-radius: 8px;
-        font-size: 14px;
+        font-size: 16px;
         font-weight: bold;
         padding: 11px;
     }}
@@ -70,7 +70,7 @@ STYLE_ERROR = """
         border: 1px solid #FEB2B2;
         border-radius: 6px;
         padding: 7px 12px;
-        font-size: 12px;
+        font-size: 16px;
     }
 """
 
@@ -147,7 +147,7 @@ class LoginWindow(QWidget):
 
         s = QLabel("Hệ thống quản lý thư viện")
         s.setAlignment(Qt.AlignCenter)
-        s.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 12px;")
+        s.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 16px;")
         lay.addWidget(s)
         lay.addSpacing(22)
 
@@ -206,7 +206,7 @@ class LoginWindow(QWidget):
     def _field_label(self, text):
         lbl = QLabel(text)
         lbl.setStyleSheet(
-            f"color: {COLOR_TEXT_MID}; font-size: 11px;"
+            f"color: {COLOR_TEXT_MID}; font-size: 16px;"
             "font-weight: bold; letter-spacing: 0.5px;"
         )
         return lbl
