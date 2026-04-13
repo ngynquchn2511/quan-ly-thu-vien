@@ -32,7 +32,7 @@ STYLE_TOOLBAR_BTN = f"""
         border: none;
         border-radius: 6px;
         padding: 7px 16px;
-        font-size: 12px;
+        font-size: 16px;
         font-weight: bold;
         font-family: 'Times New Roman';
     }}
@@ -46,7 +46,7 @@ STYLE_OUTLINE_BTN = f"""
         border: 1px solid {COLOR_BORDER};
         border-radius: 6px;
         padding: 7px 16px;
-        font-size: 12px;
+        font-size: 16px;
         font-family: 'Times New Roman';
     }}
     QPushButton:hover {{ background: {COLOR_PRIMARY_BG}; color: {COLOR_PRIMARY}; }}
@@ -57,7 +57,7 @@ STYLE_SEARCH = f"""
         border: 1px solid {COLOR_BORDER};
         border-radius: 6px;
         padding: 7px 12px;
-        font-size: 12px;
+        font-size: 16px;
         font-family: 'Times New Roman';
         color: {COLOR_TEXT_DARK};
     }}
@@ -69,7 +69,7 @@ STYLE_COMBO = f"""
         border: 1px solid {COLOR_BORDER};
         border-radius: 6px;
         padding: 7px 12px;
-        font-size: 12px;
+        font-size: 16px;
         font-family: 'Times New Roman';
         color: {COLOR_TEXT_MID};
         min-width: 140px;
@@ -83,7 +83,7 @@ STYLE_TABLE = f"""
         border: 1px solid {COLOR_BORDER};
         border-radius: 8px;
         gridline-color: {COLOR_BORDER};
-        font-size: 12px;
+        font-size: 16px;
         font-family: 'Times New Roman';
         color: {COLOR_TEXT_DARK};
     }}
@@ -96,7 +96,7 @@ STYLE_TABLE = f"""
         background: {COLOR_PRIMARY_BG};
         color: {COLOR_PRIMARY_DARK};
         font-weight: bold;
-        font-size: 11px;
+        font-size: 16px;
         font-family: 'Times New Roman';
         padding: 8px 10px;
         border: none;
@@ -109,7 +109,7 @@ STYLE_ACTION_BTN = """
         border-radius: 4px;
         border: 1px solid #DDE6F8;
         background: white;
-        font-size: 11px;
+        font-size: 16px;
         padding: 3px 8px;
         font-family: 'Times New Roman';
     }
@@ -120,7 +120,7 @@ STYLE_DIALOG_INPUT = f"""
         border: 1px solid {COLOR_BORDER};
         border-radius: 6px;
         padding: 7px 10px;
-        font-size: 13px;
+        font-size: 15px;
         font-family: 'Times New Roman';
         color: {COLOR_TEXT_DARK};
     }}
@@ -137,7 +137,7 @@ def make_badge(text, bg, fg):
     lbl.setAlignment(Qt.AlignCenter)
     lbl.setStyleSheet(
         f"background: {bg}; color: {fg}; border-radius: 8px;"
-        f"padding: 2px 10px; font-size: 11px; font-weight: bold;"
+        f"padding: 2px 10px; font-size: 16px; font-weight: bold;"
         f"font-family: 'Times New Roman';"
     )
     lbl.setFixedHeight(22)
@@ -178,7 +178,7 @@ class BookDialog(QDialog):
         def field_label(text):
             l = QLabel(text)
             l.setStyleSheet(
-                f"color: {COLOR_TEXT_MID}; font-size: 12px;"
+                f"color: {COLOR_TEXT_MID}; font-size: 16px;"
                 "font-family: 'Times New Roman';"
             )
             return l
@@ -387,7 +387,7 @@ class BookWindow(QWidget):
         self.cmb_cat.currentTextChanged.connect(self._on_search)
 
         self.lbl_count = QLabel()
-        self.lbl_count.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 12px; font-family: 'Times New Roman';")
+        self.lbl_count.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 16px; font-family: 'Times New Roman';")
 
         toolbar.addWidget(self.btn_add)
         toolbar.addWidget(self.btn_refresh)

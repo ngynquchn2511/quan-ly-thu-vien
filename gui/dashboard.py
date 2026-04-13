@@ -45,7 +45,7 @@ STYLE_NAV_ITEM = f"""
         border-radius: 0px;
         text-align: left;
         padding: 10px 16px;
-        font-size: 13px;
+        font-size: 15px;
     }}
     QPushButton:hover {{
         background: rgba(255,255,255,0.15);
@@ -61,7 +61,7 @@ STYLE_NAV_ACTIVE = f"""
         border-radius: 0px;
         text-align: left;
         padding: 10px 16px;
-        font-size: 13px;
+        font-size: 15px;
         font-weight: bold;
     }}
 """
@@ -72,7 +72,7 @@ STYLE_LOGOUT = f"""
         border: 1px solid rgba(255,255,255,0.3);
         border-radius: 6px;
         padding: 7px 12px;
-        font-size: 12px;
+        font-size: 16px;
         text-align: left;
     }}
     QPushButton:hover {{
@@ -130,7 +130,7 @@ class StatCard(QFrame):
         self.lbl_val.setFont(QFont("Times New Roman", 20, QFont.Bold))
         self.lbl_val.setStyleSheet(f"color: {COLOR_TEXT_DARK}; border: none;")
         self.lbl_title = QLabel(title)
-        self.lbl_title.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 11px; border: none;")
+        self.lbl_title.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 16px; border: none;")
         right.addWidget(self.lbl_val)
         right.addWidget(self.lbl_title)
         lay.addLayout(right)
@@ -228,9 +228,9 @@ class DashboardScreen(QWidget):
             row = QHBoxLayout()
             av  = AvatarLabel(rank, COLOR_PRIMARY_BG, COLOR_PRIMARY, 28, 6)
             lbl = QLabel(title)
-            lbl.setStyleSheet(f"color: {COLOR_TEXT_DARK}; font-size: 12px; border: none;")
+            lbl.setStyleSheet(f"color: {COLOR_TEXT_DARK}; font-size: 16px; border: none;")
             cnt = QLabel(count)
-            cnt.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 11px; border: none;")
+            cnt.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 16px; border: none;")
             row.addWidget(av)
             row.addWidget(lbl)
             row.addStretch()
@@ -247,9 +247,9 @@ class DashboardScreen(QWidget):
             row = QHBoxLayout()
             av  = AvatarLabel(initials, bg, fg, 30, 6)
             lbl = QLabel(text)
-            lbl.setStyleSheet(f"color: {COLOR_TEXT_DARK}; font-size: 12px; border: none;")
+            lbl.setStyleSheet(f"color: {COLOR_TEXT_DARK}; font-size: 16px; border: none;")
             t   = QLabel(time)
-            t.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 11px; border: none;")
+            t.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 16px; border: none;")
             row.addWidget(av)
             row.addWidget(lbl)
             row.addStretch()
@@ -276,7 +276,7 @@ class DashboardScreen(QWidget):
             overdues = get_overdue_list()
             if not overdues:
                 lbl = QLabel("Không có sách quá hạn")
-                lbl.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 12px; border: none;")
+                lbl.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 16px; border: none;")
                 lay.addWidget(lbl)
             for od in overdues[:5]:
                 row = QHBoxLayout()
@@ -285,13 +285,13 @@ class DashboardScreen(QWidget):
                 info = QVBoxLayout()
                 info.setSpacing(0)
                 lbl_name = QLabel(name)
-                lbl_name.setStyleSheet(f"color: {COLOR_TEXT_DARK}; font-size: 12px; font-weight: bold; border: none;")
+                lbl_name.setStyleSheet(f"color: {COLOR_TEXT_DARK}; font-size: 16px; font-weight: bold; border: none;")
                 lbl_book = QLabel(f"{od.get('Title','')} — Quá {int(od.get('OverdueDays',0))} ngày")
-                lbl_book.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 11px; border: none;")
+                lbl_book.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 16px; border: none;")
                 info.addWidget(lbl_name)
                 info.addWidget(lbl_book)
                 fine_lbl = QLabel(format_currency(od.get("FineAmount", 0)))
-                fine_lbl.setStyleSheet(f"color: {COLOR_DANGER}; font-size: 11px; font-weight: bold; border: none;")
+                fine_lbl.setStyleSheet(f"color: {COLOR_DANGER}; font-size: 16px; font-weight: bold; border: none;")
                 row.addWidget(av)
                 row.addLayout(info)
                 row.addStretch()
@@ -312,7 +312,7 @@ class PlaceholderScreen(QWidget):
         lbl_t.setStyleSheet(f"color: {COLOR_TEXT_DARK};")
         lbl_t.setAlignment(Qt.AlignCenter)
         lbl_d = QLabel(desc)
-        lbl_d.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 13px;")
+        lbl_d.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 15px;")
         lbl_d.setAlignment(Qt.AlignCenter)
         lay.addWidget(lbl_t)
         lay.addSpacing(8)
@@ -337,7 +337,7 @@ class NavButton(QPushButton):
 def sidebar_section(text):
     lbl = QLabel(text.upper())
     lbl.setStyleSheet(
-        "color: rgba(255,255,255,0.5); font-size: 10px;"
+        "color: rgba(255,255,255,0.5); font-size: 15px;"
         "font-weight: bold; letter-spacing: 1px; padding: 10px 16px 3px 16px;"
     )
     return lbl
@@ -444,9 +444,9 @@ class DashboardWindow(QWidget):
         user_info = QVBoxLayout()
         user_info.setSpacing(0)
         lbl_name = QLabel(name)
-        lbl_name.setStyleSheet("color: rgba(255,255,255,0.95); font-size: 12px; border: none;")
+        lbl_name.setStyleSheet("color: rgba(255,255,255,0.95); font-size: 16px; border: none;")
         lbl_role = QLabel("Quản trị viên" if role == "admin" else "Nhân viên")
-        lbl_role.setStyleSheet("color: rgba(255,255,255,0.6); font-size: 10px; border: none;")
+        lbl_role.setStyleSheet("color: rgba(255,255,255,0.6); font-size: 15px; border: none;")
         user_info.addWidget(lbl_name)
         user_info.addWidget(lbl_role)
         user_row.addWidget(av)
@@ -490,7 +490,7 @@ class DashboardWindow(QWidget):
         self.badge_overdue = QLabel("  0 quá hạn  ")
         self.badge_overdue.setStyleSheet(
             f"background: {COLOR_DANGER}; color: white;"
-            "border-radius: 10px; font-size: 11px; font-weight: bold; padding: 2px 6px;"
+            "border-radius: 10px; font-size: 16px; font-weight: bold; padding: 2px 6px;"
         )
         self.badge_overdue.hide()
         tb_lay.addWidget(self.badge_overdue)
