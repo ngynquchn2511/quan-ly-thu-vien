@@ -81,4 +81,5 @@ Thêm tài khoản nhân viên mới
 Phân quyền: Admin / Staff
 Xóa nhân viên
 Mật khẩu được mã hóa SHA-256
+<img width="501" height="558" alt="image" src="https://github.com/user-attachments/assets/44fefd08-c08a-41f0-998f-d490b6c7a276" />
 
