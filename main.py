@@ -1,34 +1,18 @@
-import sys
-import os
+"""
+ENTRY POINT CHINH
+Chay admin: python main.py admin
+Chay user:  python main.py user
+"""
+import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtGui import QFont
-from database.db import init_database
-from gui.login_gui import LoginWindow
+if len(sys.argv) < 2 or sys.argv[1] not in ["admin", "user"]:
+    print("Dung: python main.py [admin|user]")
+    sys.exit(1)
 
+if sys.argv[1] == "admin":
+    from admin_app.main import main
+else:
+    from user_app.main import main
 
-def main():
-    init_database()
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-
-    # Font mac dinh toan app
-    font = QFont("Times New Roman", 24)
-    app.setFont(font)
-
-    # Ep tat ca stylesheet dung font nay
-    app.setStyleSheet("""
-        * {
-            font-family: 'Times New Roman';
-            font-size: 24px;
-        }
-    """)
-
-    window = LoginWindow()
-    window.show()
-    sys.exit(app.exec_())
-
-
-if __name__ == "__main__":
-    main()
+main()

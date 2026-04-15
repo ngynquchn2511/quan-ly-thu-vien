@@ -240,4 +240,3 @@ for path, content in files.items():
         f.write(content)
     print(f"[OK] {path}")
 
-print("\nTat ca file da duoc cap nhat! Chay: python main.py")
