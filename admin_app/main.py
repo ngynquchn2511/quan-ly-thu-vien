@@ -11,7 +11,7 @@ def main():
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
     app.setFont(QFont("Segoe UI", 14))
-    app.setStyleSheet(styles.APP_STYLE)
+    app.setStyleSheet(styles.APP_STYLE + styles.MSGBOX)
     window = LoginWindow()
     window.show()
     sys.exit(app.exec_())

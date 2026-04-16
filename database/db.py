@@ -2,7 +2,7 @@ import sqlite3
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import DB_PATH
+from core.config import DB_PATH
 
 def get_connection():
     conn = sqlite3.connect(DB_PATH)

@@ -8,9 +8,9 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint
 from PyQt5.QtGui import QFont, QColor, QPainter, QPainterPath
 
-from services.staff_service import authenticate
-from config import APP_NAME
-import styles
+from core.services.staff_service import authenticate
+from core.config import APP_NAME
+import core.styles as styles
 
 
 class LogoWidget(QWidget):
@@ -86,7 +86,7 @@ class LoginWindow(QWidget):
         lay.addWidget(t)
         lay.addSpacing(4)
 
-        s = QLabel("He thong quan ly thu vien")
+        s = QLabel("Hệ thống quản lý thư viện")
         s.setAlignment(Qt.AlignCenter)
         s.setStyleSheet(f"color: {styles.TEXT_MUTED}; font-size: 13px; border: none;")
         lay.addWidget(s)
@@ -103,7 +103,7 @@ class LoginWindow(QWidget):
         lay.addWidget(lbl_u)
         lay.addSpacing(6)
         self.inp_user = QLineEdit()
-        self.inp_user.setPlaceholderText("Nhap ten dang nhap...")
+        self.inp_user.setPlaceholderText("Nhập tên đăng nhập...")
         self.inp_user.setStyleSheet(styles.INPUT)
         self.inp_user.setFixedHeight(44)
         lay.addWidget(self.inp_user)
@@ -115,7 +115,7 @@ class LoginWindow(QWidget):
         lay.addWidget(lbl_p)
         lay.addSpacing(6)
         self.inp_pass = QLineEdit()
-        self.inp_pass.setPlaceholderText("Nhap mat khau...")
+        self.inp_pass.setPlaceholderText("Nhập mật khẩu...")
         self.inp_pass.setEchoMode(QLineEdit.Password)
         self.inp_pass.setStyleSheet(styles.INPUT)
         self.inp_pass.setFixedHeight(44)
@@ -138,7 +138,7 @@ class LoginWindow(QWidget):
         lay.addSpacing(20)
 
         # Button
-        self.btn = QPushButton("Dang nhap")
+        self.btn = QPushButton("Đăng nhập")
         self.btn.setStyleSheet(styles.BTN_PRIMARY)
         self.btn.setFixedHeight(46)
         self.btn.setCursor(Qt.PointingHandCursor)
@@ -156,14 +156,14 @@ class LoginWindow(QWidget):
         username = self.inp_user.text().strip()
         password = self.inp_pass.text()
         if not username:
-            self._err("Vui long nhap ten tai khoan.")
+            self._err("Vui lòng nhập tên tài khoản")
             self.inp_user.setFocus(); return
         if not password:
-            self._err("Vui long nhap mat khau.")
+            self._err("Vui lòng nhập mật khẩu")
             self.inp_pass.setFocus(); return
         user = authenticate(username, password)
         if user is None:
-            self._err("Tai khoan hoac mat khau khong chinh xac.")
+            self._err("Tài khoản hoặc mật khẩu không chính xác.")
             self.inp_pass.clear(); self.inp_pass.setFocus()
             self._shake(); return
         from gui.dashboard import DashboardWindow

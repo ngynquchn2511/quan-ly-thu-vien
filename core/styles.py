@@ -236,11 +236,6 @@ def section_divider():
 
 # ── Hover helper cho table ────────────────────────────────────────────────────
 def setup_table_hover(table):
-    """
-    Goi ham nay sau khi tao QTableWidget de co hover doi mau ca dong.
-    Yeu cau: import trong file GUI.
-    """
-    from PyQt5.QtCore import Qt
     table.setMouseTracking(True)
     table.setSelectionBehavior(table.SelectRows)
     table._hovered_row = -1
@@ -248,7 +243,6 @@ def setup_table_hover(table):
     def on_cell_entered(row, col):
         if table._hovered_row == row:
             return
-        # Reset dong cu
         if table._hovered_row >= 0:
             _set_row_bg(table, table._hovered_row, "")
         table._hovered_row = row
@@ -263,13 +257,42 @@ def setup_table_hover(table):
     table.leaveEvent = on_leave
 
 
-    def _set_row_bg(table, row, color):
-        from PyQt5.QtGui import QColor
-        from PyQt5.QtWidgets import QTableWidgetItem
-        for col in range(table.columnCount()):
-            item = table.item(row, col)
-            if item:
-                if color:
-                    item.setBackground(QColor(color))
-                else:
-                    item.setBackground(QColor(0, 0, 0, 0))
+def _set_row_bg(table, row, color):
+    from PyQt5.QtGui import QColor
+    for col in range(table.columnCount()):
+        item = table.item(row, col)
+        if item:
+            if color:
+                item.setBackground(QColor(color))
+            else:
+                item.setBackground(QColor(0, 0, 0, 0))
+
+
+MSGBOX = f"""
+    QMessageBox {{
+        background: {WHITE};
+        color: {TEXT_DARK};
+    }}
+    QMessageBox QLabel {{
+        color: {TEXT_DARK};
+        background: transparent;
+    }}
+    QMessageBox QPushButton {{
+        background: {WHITE};
+        color: {TEXT_DARK};
+        border: 1px solid {BORDER};
+        border-radius: 6px;
+        padding: 6px 20px;
+        min-width: 80px;
+    }}
+    QMessageBox QPushButton:hover {{
+        background: {PRIMARY_LIGHT};
+        color: {PRIMARY};
+        border-color: {PRIMARY};
+    }}
+    QMessageBox QPushButton:default {{
+        background: {PRIMARY};
+        color: white;
+        border: none;
+    }}
+"""

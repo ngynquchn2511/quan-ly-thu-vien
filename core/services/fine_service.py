@@ -1,7 +1,7 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database.db import get_connection
-from config import FINE_PER_DAY
+from core.config import FINE_PER_DAY
 from datetime import datetime
 
 
