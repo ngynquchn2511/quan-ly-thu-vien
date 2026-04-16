@@ -1,5 +1,5 @@
 import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -7,9 +7,30 @@ from PyQt5.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QScrollArea
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
 from database.db import get_connection
-import styles
+import core.styles as styles
+
+
+MSG_STYLE = """
+    QMessageBox { background: #F7F8FC; }
+    QLabel { color: #1E293B; font-size: 14px; background: transparent; }
+    QPushButton {
+        background: white; color: #1E293B;
+        border: 1px solid #E2E8F0; border-radius: 6px;
+        padding: 8px 24px; min-width: 90px; font-size: 13px;
+    }
+    QPushButton:hover { background: #EBF1FD; color: #5B8DEF; border-color: #5B8DEF; }
+"""
+
+
+def show_msg(parent, title, text):
+    msg = QMessageBox(parent)
+    msg.setWindowTitle(title)
+    msg.setText(text)
+    msg.setStandardButtons(QMessageBox.Ok)
+    msg.button(QMessageBox.Ok).setText("Đóng")
+    msg.setStyleSheet(MSG_STYLE)
+    msg.exec_()
 
 
 class ReportCard(QFrame):
@@ -18,93 +39,129 @@ class ReportCard(QFrame):
         self.callback = callback
         self.setCursor(Qt.PointingHandCursor)
         self.setFixedHeight(110)
-        self._normal_style = f"""
+        self._normal = f"""
             QFrame {{
                 background: {styles.WHITE};
                 border: 1px solid {styles.BORDER};
                 border-radius: 12px;
             }}
         """
-        self._hover_style = f"""
+        self._hover = f"""
             QFrame {{
                 background: {styles.PRIMARY_LIGHT};
                 border: 2px solid {styles.PRIMARY};
                 border-radius: 12px;
             }}
         """
-        self.setStyleSheet(self._normal_style)
-        lay = QVBoxLayout(self); lay.setContentsMargins(18,14,18,14); lay.setSpacing(8)
+        self.setStyleSheet(self._normal)
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(18, 14, 18, 14)
+        lay.setSpacing(8)
+
         top = QHBoxLayout()
-        ic = QLabel(icon); ic.setFixedSize(38,38); ic.setAlignment(Qt.AlignCenter)
-        ic.setStyleSheet(f"background: {styles.PRIMARY_LIGHT}; border-radius: 10px; border: none; font-size: 18px;")
-        top.addWidget(ic); top.addStretch(); lay.addLayout(top)
-        t = QLabel(title); t.setStyleSheet(f"color: {styles.TEXT_DARK}; font-weight: 600; border: none;")
-        d = QLabel(desc);  d.setStyleSheet(f"color: {styles.TEXT_MUTED}; font-size: 13px; border: none;")
-        lay.addWidget(t); lay.addWidget(d)
+        ic = QLabel(icon)
+        ic.setFixedSize(38, 38)
+        ic.setAlignment(Qt.AlignCenter)
+        ic.setStyleSheet(
+            f"background: {styles.PRIMARY_LIGHT}; border-radius: 10px;"
+            "border: none; font-size: 18px;")
+        top.addWidget(ic); top.addStretch()
+        lay.addLayout(top)
+
+        t = QLabel(title)
+        t.setStyleSheet(f"color: {styles.TEXT_DARK}; font-weight: 600; border: none;")
+        d = QLabel(desc)
+        d.setStyleSheet(f"color: {styles.TEXT_MUTED}; font-size: 13px; border: none;")
+        lay.addWidget(t)
+        lay.addWidget(d)
 
     def mousePressEvent(self, e):
         if self.callback: self.callback()
 
-    def enterEvent(self, e): self.setStyleSheet(self._hover_style)
-    def leaveEvent(self, e):  self.setStyleSheet(self._normal_style)
+    def enterEvent(self, e): self.setStyleSheet(self._hover)
+    def leaveEvent(self, e):  self.setStyleSheet(self._normal)
 
 
 class ReportsWindow(QWidget):
     def __init__(self, parent=None):
-        super().__init__(parent); self._build(); self._load_stats()
+        super().__init__(parent)
+        self._build()
+        self._load_stats()
 
     def _build(self):
-        scroll = QScrollArea(self); scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame); scroll.setStyleSheet("background: transparent; border: none;")
-        container = QWidget()
-        lay = QVBoxLayout(container); lay.setContentsMargins(24,18,24,18); lay.setSpacing(16)
+        # Scroll bao ngoai toan bo man hinh
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("background: transparent; border: none;")
 
-        # Grid cards
-        grid = QGridLayout(); grid.setSpacing(12)
+        container = QWidget()
+        self._lay = QVBoxLayout(container)
+        self._lay.setContentsMargins(24, 18, 24, 18)
+        self._lay.setSpacing(16)
+
+        # 6 card chuc nang
+        grid = QGridLayout()
+        grid.setSpacing(12)
         cards = [
-            ("📄","Bao cao muon tra",    "Xuat Excel theo ky",      self._export_borrow),
-            ("📊","Thong ke sach",       "Top sach muon nhieu",     self._show_top_books),
-            ("⚠", "Danh sach qua han",  "Kem tien phat",           self._show_overdue),
-            ("👤","Thong ke doc gia",    "Hoat dong theo thang",    self._show_students),
-            ("💰","Bao cao tien phat",   "Tien phat thu duoc",      self._show_fines),
-            ("📑","Xuat Excel tat ca",   "Toan bo du lieu",         self._export_borrow),
+            ("📄", "Báo cáo mượn trả",   "Xuất Excel theo kỳ",      self._export_borrow),
+            ("📊", "Thống kê sách",       "Top sách mượn nhiều",     self._show_top_books),
+            ("⚠",  "Danh sách quá hạn",  "Kèm tiền phạt",           self._show_overdue),
+            ("👤", "Thống kê độc giả",    "Hoạt động theo tháng",    self._show_students),
+            ("💰", "Báo cáo tiền phạt",   "Tiền phạt thu được",      self._show_fines),
+            ("📑", "Xuất Excel tất cả",   "Toàn bộ dữ liệu",         self._export_borrow),
         ]
-        for idx,(icon,title,desc,cb) in enumerate(cards):
-            grid.addWidget(ReportCard(icon,title,desc,cb), idx//3, idx%3)
-        lay.addLayout(grid)
+        for idx, (icon, title, desc, cb) in enumerate(cards):
+            grid.addWidget(ReportCard(icon, title, desc, cb), idx // 3, idx % 3)
+        self._lay.addLayout(grid)
 
         # Bieu do the loai
-        panel = QFrame(); panel.setStyleSheet(styles.CARD)
-        pl = QVBoxLayout(panel); pl.setContentsMargins(20,16,20,16); pl.setSpacing(12)
-        ph = QLabel("Thong ke muon sach theo the loai")
+        panel = QFrame()
+        panel.setStyleSheet(styles.CARD)
+        pl = QVBoxLayout(panel)
+        pl.setContentsMargins(20, 16, 20, 16)
+        pl.setSpacing(12)
+
+        ph = QLabel("Thống kê mượn sách theo thể loại")
         ph.setStyleSheet(f"color: {styles.TEXT_DARK}; font-weight: 600; border: none;")
         pl.addWidget(ph)
+
         div = QFrame(); div.setFrameShape(QFrame.HLine)
         div.setStyleSheet(f"background: {styles.BORDER}; max-height: 1px; border: none;")
         pl.addWidget(div)
-        self.bar_container = QVBoxLayout(); self.bar_container.setSpacing(10)
-        pl.addLayout(self.bar_container)
-        lay.addWidget(panel)
 
-        # Bang ket qua
+        self.bar_container = QVBoxLayout()
+        self.bar_container.setSpacing(10)
+        pl.addLayout(self.bar_container)
+        self._lay.addWidget(panel)
+
+        # Khu vuc ket qua (label + bang) — them vao sau khi bam card
         self.result_label = QLabel()
-        self.result_label.setStyleSheet(f"color: {styles.TEXT_DARK}; font-weight: 600; border: none;")
+        self.result_label.setStyleSheet(
+            f"color: {styles.TEXT_DARK}; font-weight: 600; border: none;")
         self.result_label.hide()
-        lay.addWidget(self.result_label)
+        self._lay.addWidget(self.result_label)
 
         self.table = QTableWidget()
         self.table.setStyleSheet(styles.TABLE)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.setAlternatingRowColors(True)
+        self.table.setAlternatingRowColors(False)
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
+        # Tat scroll noi bo, de scroll ngoai xu ly
+        self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.table.hide()
-        lay.addWidget(self.table)
-        lay.addStretch()
+        self._lay.addWidget(self.table)
 
+        self._lay.addStretch()
         scroll.setWidget(container)
-        outer = QVBoxLayout(self); outer.setContentsMargins(0,0,0,0); outer.addWidget(scroll)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(scroll)
 
     def _load_stats(self):
         try:
@@ -112,103 +169,162 @@ class ReportsWindow(QWidget):
             cur.execute("""
                 SELECT bk.Category, COUNT(*) as cnt FROM Borrow b
                 JOIN Books bk ON b.BookID=bk.BookID
-                GROUP BY bk.Category ORDER BY cnt DESC LIMIT 6
+                GROUP BY bk.Category ORDER BY cnt DESC LIMIT 8
             """)
             rows = cur.fetchall(); conn.close()
-        except: rows = []
+        except:
+            rows = []
 
         while self.bar_container.count():
             item = self.bar_container.takeAt(0)
             if item.widget(): item.widget().deleteLater()
 
         if not rows:
-            lbl = QLabel("Chua co du lieu."); lbl.setStyleSheet(f"color: {styles.TEXT_MUTED}; border: none;")
-            self.bar_container.addWidget(lbl); return
+            lbl = QLabel("Chưa có dữ liệu thống kê.")
+            lbl.setStyleSheet(f"color: {styles.TEXT_MUTED}; border: none;")
+            self.bar_container.addWidget(lbl)
+            return
 
         max_cnt = max(r[1] for r in rows) or 1
         for cat, cnt in rows:
             row_w = QWidget()
-            row_l = QHBoxLayout(row_w); row_l.setContentsMargins(0,0,0,0); row_l.setSpacing(12)
-            lbl_cat = QLabel(cat or "Khac")
-            lbl_cat.setFixedWidth(110); lbl_cat.setStyleSheet(f"color: {styles.TEXT_MID}; border: none;")
+            row_l = QHBoxLayout(row_w)
+            row_l.setContentsMargins(0, 0, 0, 0)
+            row_l.setSpacing(12)
+
+            lbl_cat = QLabel(cat or "Khác")
+            lbl_cat.setFixedWidth(110)
+            lbl_cat.setStyleSheet(f"color: {styles.TEXT_MID}; border: none;")
+
             track = QFrame(); track.setFixedHeight(10)
-            track.setStyleSheet(f"background: {styles.BG}; border-radius: 5px; border: 1px solid {styles.BORDER};")
-            pct = int(cnt/max_cnt*100)
+            track.setStyleSheet(
+                f"background: {styles.BG}; border-radius: 5px;"
+                f"border: 1px solid {styles.BORDER};")
             fill = QFrame(track); fill.setFixedHeight(10)
-            fill.setStyleSheet(f"background: {styles.PRIMARY}; border-radius: 5px; border: none;")
-            fill.setFixedWidth(max(8, int(pct*2.8)))
-            lbl_cnt = QLabel(f"{cnt} luot")
-            lbl_cnt.setStyleSheet(f"color: {styles.TEXT_MID}; border: none;"); lbl_cnt.setFixedWidth(65)
-            row_l.addWidget(lbl_cat); row_l.addWidget(track,1); row_l.addWidget(lbl_cnt)
+            fill.setStyleSheet(
+                f"background: {styles.PRIMARY}; border-radius: 5px; border: none;")
+            fill.setFixedWidth(max(8, int(cnt / max_cnt * 100 * 2.8)))
+
+            lbl_cnt = QLabel(f"{cnt} lượt")
+            lbl_cnt.setStyleSheet(f"color: {styles.TEXT_MID}; border: none;")
+            lbl_cnt.setFixedWidth(65)
+
+            row_l.addWidget(lbl_cat)
+            row_l.addWidget(track, 1)
+            row_l.addWidget(lbl_cnt)
             self.bar_container.addWidget(row_w)
 
     def _show_table(self, title, headers, rows):
-        self.result_label.setText(title); self.result_label.show()
+        self.result_label.setText(title)
+        self.result_label.show()
+
         self.table.setColumnCount(len(headers))
         self.table.setHorizontalHeaderLabels(headers)
         self.table.setRowCount(0)
+
         for i, row in enumerate(rows):
             self.table.insertRow(i)
             for j, val in enumerate(row):
                 item = QTableWidgetItem(str(val) if val is not None else "")
-                item.setTextAlignment(Qt.AlignVCenter|Qt.AlignLeft)
-                self.table.setItem(i,j,item)
-            self.table.setRowHeight(i,44)
+                item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+                self.table.setItem(i, j, item)
+            self.table.setRowHeight(i, 44)
+
         hdr = self.table.horizontalHeader()
-        for c in range(len(headers)): hdr.setSectionResizeMode(c, QHeaderView.ResizeToContents)
-        if headers: hdr.setSectionResizeMode(0, QHeaderView.Stretch)
+        for c in range(len(headers)):
+            hdr.setSectionResizeMode(c, QHeaderView.ResizeToContents)
+        if headers:
+            hdr.setSectionResizeMode(0, QHeaderView.Stretch)
+
+        # Tinh chieu cao chinh xac de hien toan bo, khong can scroll noi bo
+        header_h = self.table.horizontalHeader().height()
+        total_h  = header_h + len(rows) * 44 + 4
+        self.table.setFixedHeight(total_h)
         self.table.show()
 
     def _show_top_books(self):
         conn = get_connection(); cur = conn.cursor()
         cur.execute("""
             SELECT bk.Title, bk.Author, COUNT(*) as cnt FROM Borrow b
-            JOIN Books bk ON b.BookID=bk.BookID GROUP BY b.BookID ORDER BY cnt DESC LIMIT 10
+            JOIN Books bk ON b.BookID=bk.BookID
+            GROUP BY b.BookID ORDER BY cnt DESC LIMIT 10
         """)
         rows = cur.fetchall(); conn.close()
-        self._show_table("Top 10 sach muon nhieu nhat",["Ten sach","Tac gia","So lan muon"],rows)
+        self._show_table(
+            "Top 10 sách được mượn nhiều nhất",
+            ["Tên sách", "Tác giả", "Số lần mượn"],
+            rows
+        )
 
     def _show_overdue(self):
         conn = get_connection(); cur = conn.cursor()
         cur.execute("""
             SELECT s.Name, s.StudentID, bk.Title, b.DueDate,
-                   CAST(julianday('now')-julianday(b.DueDate) AS INTEGER) as days, b.FineAmount
-            FROM Borrow b JOIN Students s ON b.StudentID=s.StudentID
-            JOIN Books bk ON b.BookID=bk.BookID WHERE b.Status='Overdue' ORDER BY b.DueDate ASC
+                   CAST(julianday('now')-julianday(b.DueDate) AS INTEGER) as days,
+                   b.FineAmount
+            FROM Borrow b
+            JOIN Students s ON b.StudentID=s.StudentID
+            JOIN Books bk ON b.BookID=bk.BookID
+            WHERE b.Status='Overdue'
+            ORDER BY b.DueDate ASC
         """)
         rows = cur.fetchall(); conn.close()
-        data = [(r[0],r[1],r[2],r[3],f"{r[4]} ngay",f"{r[5]:,.0f}d") for r in rows]
-        self._show_table(f"Danh sach sach qua han ({len(data)} phieu)",
-            ["Ho ten","Ma SV","Ten sach","Han tra","So ngay qua","Tien phat"],data)
+        data = [
+            (r[0], r[1], r[2], r[3], f"{r[4]} ngày", f"{r[5]:,.0f}đ")
+            for r in rows
+        ]
+        self._show_table(
+            f"Danh sách sách quá hạn ({len(data)} phiếu)",
+            ["Họ tên", "Mã SV", "Tên sách", "Hạn trả", "Số ngày quá", "Tiền phạt"],
+            data
+        )
 
     def _show_students(self):
         conn = get_connection(); cur = conn.cursor()
         cur.execute("""
             SELECT s.Name, s.StudentID, s.Faculty, COUNT(b.BorrowID) as total
-            FROM Students s LEFT JOIN Borrow b ON s.StudentID=b.StudentID
+            FROM Students s
+            LEFT JOIN Borrow b ON s.StudentID=b.StudentID
             GROUP BY s.StudentID ORDER BY total DESC
         """)
         rows = cur.fetchall(); conn.close()
-        self._show_table("Thong ke muon sach theo doc gia",
-            ["Ho ten","Ma SV","Khoa","Tong luot muon"],rows)
+        self._show_table(
+            "Thống kê mượn sách theo độc giả",
+            ["Họ tên", "Mã SV", "Khoa", "Tổng lượt mượn"],
+            rows
+        )
 
     def _show_fines(self):
         conn = get_connection(); cur = conn.cursor()
         cur.execute("""
-            SELECT s.Name, s.StudentID, b.DueDate, b.ReturnDate, b.FineAmount,
-                   CASE b.FinePaid WHEN 1 THEN 'Da nop' ELSE 'Chua nop' END
-            FROM Borrow b JOIN Students s ON b.StudentID=s.StudentID
-            WHERE b.FineAmount>0 ORDER BY b.FineAmount DESC
+            SELECT s.Name, s.StudentID, b.DueDate, b.ReturnDate,
+                   b.FineAmount,
+                   CASE b.FinePaid WHEN 1 THEN 'Đã nộp' ELSE 'Chưa nộp' END
+            FROM Borrow b
+            JOIN Students s ON b.StudentID=s.StudentID
+            WHERE b.FineAmount > 0
+            ORDER BY b.FineAmount DESC
         """)
         rows = cur.fetchall(); conn.close()
-        data = [(r[0],r[1],r[2],r[3] or "",f"{r[4]:,.0f}d",r[5]) for r in rows]
-        self._show_table(f"Bao cao tien phat ({len(data)} phieu)",
-            ["Ho ten","Ma SV","Han tra","Ngay tra","Tien phat","Trang thai"],data)
+        data = [
+            (r[0], r[1], r[2], r[3] or "", f"{r[4]:,.0f}đ", r[5])
+            for r in rows
+        ]
+        self._show_table(
+            f"Báo cáo tiền phạt ({len(data)} phiếu)",
+            ["Họ tên", "Mã SV", "Hạn trả", "Ngày trả", "Tiền phạt", "Trạng thái"],
+            data
+        )
 
     def _export_borrow(self):
         try:
             from reports.export_excel import export_borrow_report
-            path, _ = QFileDialog.getSaveFileName(self,"Luu file","bao_cao_muon_tra.xlsx","Excel (*.xlsx)")
-            if path: export_borrow_report(path); QMessageBox.information(self,"Thanh cong",f"Da xuat: {path}")
-        except ImportError: QMessageBox.warning(self,"Thieu thu vien","pip install pandas openpyxl")
-        except Exception as e: QMessageBox.critical(self,"Loi",str(e))
+            path, _ = QFileDialog.getSaveFileName(
+                self, "Lưu file", "bao_cao_muon_tra.xlsx", "Excel (*.xlsx)")
+            if path:
+                export_borrow_report(path)
+                show_msg(self, "Thành công", f"Đã xuất file:\n{path}")
+        except ImportError:
+            show_msg(self, "Thiếu thư viện", "Vui lòng cài: pip install pandas openpyxl")
+        except Exception as e:
+            show_msg(self, "Lỗi", str(e))

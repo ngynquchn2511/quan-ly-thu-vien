@@ -7,12 +7,12 @@ from PyQt5.QtWidgets import (
     QHeaderView, QComboBox, QDialog, QMessageBox, QAbstractItemView, QSpinBox
 )
 from PyQt5.QtCore import Qt
-from services.book_service import (
+from core.services.book_service import (
     get_all_books, add_book, update_book,
     delete_book, get_book_by_id, get_categories
 )
 from database.models import Book
-import styles
+import core.styles as styles
 
 
 class BookDialog(QDialog):

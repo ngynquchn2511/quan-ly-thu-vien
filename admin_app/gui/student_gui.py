@@ -7,14 +7,14 @@ from PyQt5.QtWidgets import (
     QHeaderView, QComboBox, QDialog, QMessageBox, QAbstractItemView, QDateEdit
 )
 from PyQt5.QtCore import Qt, QDate
-from services.student_service import (
+from core.services.student_service import (
     get_all_students, add_student, update_student,
     delete_student, get_student_by_id, get_faculties
 )
 from database.models import Student
 from database.db import get_connection
 from datetime import datetime
-import styles
+import core.styles as styles
 
 
 class StudentDialog(QDialog):

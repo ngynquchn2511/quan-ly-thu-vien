@@ -7,11 +7,11 @@ from PyQt5.QtWidgets import (
     QHeaderView, QMessageBox, QAbstractItemView
 )
 from PyQt5.QtCore import Qt
-from services.borrow_service import borrow_book, return_book, get_active_borrows, update_overdue_status
-from services.student_service import get_student_by_id
-from services.book_service import get_book_by_id
+from core.services.borrow_service import borrow_book, return_book, get_active_borrows, update_overdue_status
+from core.services.student_service import get_student_by_id
+from core.services.book_service import get_book_by_id
 from datetime import datetime, timedelta
-import styles
+import core.styles as styles
 
 
 class InfoChip(QFrame):
@@ -324,14 +324,29 @@ class BorrowWindow(QWidget):
         self.lbl_count.setText(f"Đang mượn: {len(rows)} lượt")
 
     def _do_return(self, borrow_id):
-        if QMessageBox.question(
-            self, "Xác nhận trả",
-            "Xác nhận trả sách này?",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
-        ) == QMessageBox.Yes:
-            ok, msg, fine = return_book(borrow_id)
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Xác nhận trả")
+        msg.setText("Xác nhận trả sách này?")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.setDefaultButton(QMessageBox.No)
+        msg.button(QMessageBox.Yes).setText("Xác nhận")
+        msg.button(QMessageBox.No).setText("Huỷ")
+        msg.setStyleSheet("""
+            QMessageBox { background: #F7F8FC; }
+            QLabel { color: #1E293B; font-size: 14px; background: transparent; }
+            QPushButton {
+                background: white; color: #1E293B;
+                border: 1px solid #E2E8F0; border-radius: 6px;
+                padding: 8px 24px; min-width: 90px; font-size: 13px;
+            }
+            QPushButton:hover { background: #EBF1FD; color: #5B8DEF; border-color: #5B8DEF; }
+            QPushButton[text="Xác nhận"] { background: #5B8DEF; color: white; border: none; }
+            QPushButton[text="Xác nhận"]:hover { background: #4070D4; }
+        """)
+        if msg.exec_() == QMessageBox.Yes:
+            ok, msg_text, fine = return_book(borrow_id)
             if ok:
-                QMessageBox.information(self, "Thành công", msg)
+                QMessageBox.information(self, "Thành công", msg_text)
                 self.refresh_table()
             else:
-                QMessageBox.warning(self, "Lỗi", msg)
+                QMessageBox.warning(self, "Lỗi", msg_text)

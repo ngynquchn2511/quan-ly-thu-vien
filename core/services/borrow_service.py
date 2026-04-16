@@ -3,7 +3,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database.db import get_connection
 from datetime import datetime, timedelta
-from config import DEFAULT_BORROW_DAYS, FINE_PER_DAY, MAX_BORROW_LIMIT
+from core.config import DEFAULT_BORROW_DAYS, FINE_PER_DAY, MAX_BORROW_LIMIT
 
 
 def borrow_book(student_id: str, book_id: str):
