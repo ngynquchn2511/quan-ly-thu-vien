@@ -67,3 +67,45 @@ def get_faculties():
     rows = cur.fetchall()
     conn.close()
     return [r[0] for r in rows]
+import hashlib
+
+def authenticate_student(student_id, password):
+    from database.db import get_connection
+    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute("""
+        SELECT StudentID, Name, Faculty, Class, Phone, Email, CardExpire
+        FROM Students
+        WHERE StudentID=? AND PasswordHash=?
+    """, (student_id, pw_hash))
+    row = cur.fetchone()
+    conn.close()
+    if row:
+        return {
+            "StudentID":  row[0],
+            "Name":       row[1],
+            "Faculty":    row[2],
+            "Class":      row[3],
+            "Phone":      row[4],
+            "Email":      row[5],
+            "CardExpire": row[6],
+        }
+    return None
+
+
+def change_student_password(student_id, old_password, new_password):
+    from database.db import get_connection
+    if authenticate_student(student_id, old_password) is None:
+        return False, "Mật khẩu cũ không đúng."
+    if len(new_password) < 6:
+        return False, "Mật khẩu mới phải có ít nhất 6 ký tự."
+    pw_hash = hashlib.sha256(new_password.encode()).hexdigest()
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute(
+        "UPDATE Students SET PasswordHash=? WHERE StudentID=?",
+        (pw_hash, student_id))
+    conn.commit()
+    conn.close()
+    return True, "Đổi mật khẩu thành công."

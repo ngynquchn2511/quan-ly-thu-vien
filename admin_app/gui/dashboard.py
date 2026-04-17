@@ -80,12 +80,11 @@ class DashboardScreen(QWidget):
         container = QWidget()
         lay = QVBoxLayout(container); lay.setContentsMargins(24,24,24,24); lay.setSpacing(16)
 
-        # Stat cards
         stats_row = QHBoxLayout(); stats_row.setSpacing(14)
-        self.card_books    = StatCard("Tổng số sách",  "...", "S",  styles.PRIMARY_LIGHT, styles.PRIMARY)
-        self.card_students = StatCard("Sinh viên",      "...", "SV", styles.SUCCESS_BG,    styles.SUCCESS)
-        self.card_borrow   = StatCard("Đang mượn",      "...", "M",  styles.WARNING_BG,    styles.WARNING)
-        self.card_overdue  = StatCard("Quá hạn",        "...", "!",  styles.DANGER_BG,     styles.DANGER)
+        self.card_books    = StatCard("Tổng số sách", "...", "S",  styles.PRIMARY_LIGHT, styles.PRIMARY)
+        self.card_students = StatCard("Sinh viên",     "...", "SV", styles.SUCCESS_BG,    styles.SUCCESS)
+        self.card_borrow   = StatCard("Đang mượn",     "...", "M",  styles.WARNING_BG,    styles.WARNING)
+        self.card_overdue  = StatCard("Quá hạn",       "...", "!",  styles.DANGER_BG,     styles.DANGER)
         for c in [self.card_books, self.card_students, self.card_borrow, self.card_overdue]:
             stats_row.addWidget(c)
         lay.addLayout(stats_row)
@@ -122,9 +121,9 @@ class DashboardScreen(QWidget):
 
     def _fill_activity(self, lay):
         acts = [
-            ("TT", "Thêm sách mới — Clean Code",   "09:14", styles.SUCCESS_BG,    styles.SUCCESS),
-            ("M",  "Mượn sách — SV2021001",         "08:52", styles.WARNING_BG,    styles.WARNING),
-            ("TR", "Trả sách — SV2020034",          "08:30", styles.PRIMARY_LIGHT, styles.PRIMARY),
+            ("TT", "Thêm sách mới — Clean Code",  "09:14", styles.SUCCESS_BG,    styles.SUCCESS),
+            ("M",  "Mượn sách — SV2021001",        "08:52", styles.WARNING_BG,    styles.WARNING),
+            ("TR", "Trả sách — SV2020034",         "08:30", styles.PRIMARY_LIGHT, styles.PRIMARY),
         ]
         for ini, text, time, bg, fg in acts:
             row = QHBoxLayout(); row.setSpacing(10)
@@ -142,20 +141,14 @@ class DashboardScreen(QWidget):
             self.card_borrow.set_value(stats.get("borrowing", 0))
             self.card_overdue.set_value(stats.get("overdue", 0))
 
-            # Xoa noi dung cu cua panel overdue
-            # Xay dung lai panel tu dau
             lay = self.panel_overdue.layout()
-
-            # Xoa het item cu (tu index 2 tro di, giu title=0 va divider=1)
             indexes_to_remove = list(range(lay.count() - 1, 1, -1))
             for idx in indexes_to_remove:
                 item = lay.takeAt(idx)
-                if item is None:
-                    continue
+                if item is None: continue
                 w = item.widget()
                 if w:
-                    w.setParent(None)
-                    w.deleteLater()
+                    w.setParent(None); w.deleteLater()
                 elif item.layout():
                     sub = item.layout()
                     while sub.count():
@@ -174,38 +167,27 @@ class DashboardScreen(QWidget):
                 lay.addWidget(lbl)
             else:
                 for od in overdues[:5]:
-                    # Tao widget chua 1 dong
                     row_w = QWidget()
                     row_l = QHBoxLayout(row_w)
-                    row_l.setContentsMargins(0, 4, 0, 4)
-                    row_l.setSpacing(10)
-
+                    row_l.setContentsMargins(0, 4, 0, 4); row_l.setSpacing(10)
                     name = od.get("Name", "")
                     av   = AvatarLabel(name[:2], styles.PRIMARY_LIGHT, styles.PRIMARY, 32, 8)
-
                     info_w = QWidget()
                     info_l = QVBoxLayout(info_w)
-                    info_l.setContentsMargins(0, 0, 0, 0)
-                    info_l.setSpacing(2)
+                    info_l.setContentsMargins(0,0,0,0); info_l.setSpacing(2)
                     ln = QLabel(name)
                     ln.setStyleSheet(f"color: {styles.TEXT_DARK}; font-weight: 600; border: none;")
                     lb = QLabel(f"{od.get('Title','')} — Quá {int(od.get('OverdueDays',0))} ngày")
                     lb.setStyleSheet(f"color: {styles.TEXT_MUTED}; font-size: 13px; border: none;")
-                    info_l.addWidget(ln)
-                    info_l.addWidget(lb)
-
+                    info_l.addWidget(ln); info_l.addWidget(lb)
                     fl = QLabel(format_currency(od.get("FineAmount", 0)))
                     fl.setStyleSheet(f"color: {styles.DANGER}; font-weight: 600; border: none;")
-
-                    row_l.addWidget(av)
-                    row_l.addWidget(info_w)
-                    row_l.addStretch()
-                    row_l.addWidget(fl)
-
+                    row_l.addWidget(av); row_l.addWidget(info_w)
+                    row_l.addStretch(); row_l.addWidget(fl)
                     lay.addWidget(row_w)
-
         except Exception as e:
             print(f"[Dashboard] {e}")
+
 
 class NavButton(QPushButton):
     def __init__(self, text, parent=None):
@@ -247,8 +229,6 @@ class DashboardWindow(QWidget):
         self._nav_buttons = {}
         self._build_ui()
         self._center()
-        try: update_overdue_status()
-        except: pass
         self._show_page("dashboard")
 
     def _build_ui(self):
@@ -303,7 +283,8 @@ class DashboardWindow(QWidget):
         ur = QHBoxLayout(); ur.setSpacing(10)
         av = AvatarLabel(initials, "rgba(255,255,255,0.2)", "white", 34, 17)
         ui = QVBoxLayout(); ui.setSpacing(1)
-        ln  = QLabel(name); ln.setStyleSheet("color: rgba(255,255,255,0.9); font-weight: 600; border: none;")
+        ln  = QLabel(name)
+        ln.setStyleSheet("color: rgba(255,255,255,0.9); font-weight: 600; border: none;")
         lr2 = QLabel("Quản trị viên" if role == "admin" else "Nhân viên")
         lr2.setStyleSheet("color: rgba(255,255,255,0.55); font-size: 12px; border: none;")
         ui.addWidget(ln); ui.addWidget(lr2)
@@ -358,7 +339,7 @@ class DashboardWindow(QWidget):
 
         self.screens = {
             "dashboard": DashboardScreen(),
-            "books":     BookWindow(),
+            "books":     BookWindow(current_user=self.current_user),  # truyen user
             "students":  StudentWindow(),
             "borrow":    BorrowWindow(),
             "reports":   ReportsWindow(),
@@ -385,17 +366,33 @@ class DashboardWindow(QWidget):
                 else:
                     self.badge_overdue.hide()
             except: pass
-        if hasattr(self.screens.get(key), "refresh"):
-            try: self.screens[key].refresh()
+        elif key == "borrow":
+            try: self.screens["borrow"].refresh_table()
             except: pass
+        elif key in ("books", "students", "reports", "staff"):
+            if hasattr(self.screens.get(key), "refresh"):
+                try: self.screens[key].refresh()
+                except: pass
 
     def _logout(self):
-        reply = QMessageBox.question(
-            self, "Đăng xuất",
-            "Bạn có chắc muốn đăng xuất?",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
-        )
-        if reply == QMessageBox.Yes:
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Đăng xuất")
+        msg.setText("Bạn có chắc muốn đăng xuất?")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.setDefaultButton(QMessageBox.No)
+        msg.button(QMessageBox.Yes).setText("Đăng xuất")
+        msg.button(QMessageBox.No).setText("Huỷ")
+        msg.setStyleSheet("""
+            QMessageBox { background: #F7F8FC; }
+            QLabel { color: #1E293B; font-size: 14px; background: transparent; }
+            QPushButton {
+                background: white; color: #1E293B;
+                border: 1px solid #E2E8F0; border-radius: 6px;
+                padding: 8px 24px; min-width: 90px;
+            }
+            QPushButton:hover { background: #EBF1FD; color: #5B8DEF; }
+        """)
+        if msg.exec_() == QMessageBox.Yes:
             from admin_app.gui.login_gui import LoginWindow
             self.login = LoginWindow()
             self.login.show()
