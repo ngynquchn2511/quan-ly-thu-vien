@@ -1,6 +1,8 @@
 import sqlite3
 import sys
 import os
+import hashlib
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.config import DB_PATH
 
@@ -13,6 +15,7 @@ def get_connection():
 def init_database():
     conn = get_connection()
     cur  = conn.cursor()
+
     cur.executescript("""
         CREATE TABLE IF NOT EXISTS Books (
             BookID    TEXT PRIMARY KEY,
@@ -24,18 +27,19 @@ def init_database():
             ISBN      TEXT UNIQUE,
             Quantity  INTEGER DEFAULT 1,
             Available INTEGER DEFAULT 1,
-            Location  TEXT
+            Location  TEXT,
+            Price     REAL DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS Students (
-            StudentID  TEXT PRIMARY KEY,
-            Name       TEXT NOT NULL,
-            Faculty    TEXT,
-            Class      TEXT,
-            Phone      TEXT,
-            Email      TEXT,
-            CardExpire TEXT,
-            Username   TEXT UNIQUE,
-            Password   TEXT
+            StudentID    TEXT PRIMARY KEY,
+            Name         TEXT NOT NULL,
+            Faculty      TEXT,
+            Class        TEXT,
+            Phone        TEXT,
+            Email        TEXT,
+            CardExpire   TEXT,
+            PasswordHash TEXT,
+            CardStatus   TEXT DEFAULT 'active'
         );
         CREATE TABLE IF NOT EXISTS Staff (
             StaffID  TEXT PRIMARY KEY,
@@ -54,6 +58,7 @@ def init_database():
             Status     TEXT DEFAULT 'Borrowing',
             FineAmount REAL DEFAULT 0,
             FinePaid   INTEGER DEFAULT 0,
+            LostDate   TEXT,
             FOREIGN KEY (StudentID) REFERENCES Students(StudentID),
             FOREIGN KEY (BookID)    REFERENCES Books(BookID)
         );
@@ -67,44 +72,57 @@ def init_database():
             StaffID   TEXT,
             Action    TEXT NOT NULL,
             TargetID  TEXT,
-            Timestamp TEXT NOT NULL
+            Timestamp TEXT NOT NULL,
+            Detail    TEXT
         );
     """)
-    import hashlib
+
+    # ── Migration: ensure new columns exist ────────────────────────────────
+    migrations = [
+        ("Students",  "PasswordHash", "TEXT"),
+        ("Students",  "CardStatus",   "TEXT DEFAULT 'active'"),
+        ("Books",     "Price",        "REAL DEFAULT 0"),
+        ("Borrow",    "LostDate",     "TEXT"),
+        ("AuditLog",  "Detail",       "TEXT"),
+    ]
+    for table, col, col_type in migrations:
+        cur.execute(f"PRAGMA table_info({table})")
+        cols = [r[1] for r in cur.fetchall()]
+        if col not in cols:
+            try:
+                cur.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
+            except Exception as e:
+                print(f"[DB] Migration error on {table}.{col}: {e}")
+
+    # ── Default Admin ──────────────────────────────────────────────────────
     cur.execute("SELECT COUNT(*) FROM Staff WHERE Username='admin'")
     if cur.fetchone()[0] == 0:
         pw = hashlib.sha256("admin123".encode()).hexdigest()
         cur.execute("""
-            INSERT INTO Staff (StaffID,Name,Username,Password,Role)
-            VALUES ('NV001','Quan Tri Vien','admin',?,'admin')
+            INSERT INTO Staff (StaffID, Name, Username, Password, Role)
+            VALUES ('NV001', 'Quan Tri Vien', 'admin', ?, 'admin')
         """, (pw,))
-    
-    # Khoi tao Sinh vien mau
-    pw_sv = hashlib.sha256("123".encode()).hexdigest()
-    
-    # SV001
-    cur.execute("SELECT COUNT(*) FROM Students WHERE StudentID='SV001'")
-    if cur.fetchone()[0] == 0:
-        cur.execute("""
-            INSERT INTO Students (StudentID, Name, Faculty, Class, Phone, Email, CardExpire, Username, Password)
-            VALUES ('SV001', 'Sinh Vien Mau', 'CNTT', 'K65', '0123456789', 'sv@gmail.com', '2025-01-01', 'student', ?)
-        """, (pw_sv,))
-    else:
-        cur.execute("UPDATE Students SET Username='student', Password=? WHERE StudentID='SV001' AND (Username IS NULL OR Username='')", (pw_sv,))
 
-    # SV002
-    cur.execute("SELECT COUNT(*) FROM Students WHERE StudentID='SV002'")
-    if cur.fetchone()[0] == 0:
-        cur.execute("""
-            INSERT INTO Students (StudentID, Name, Faculty, Class, Phone, Email, CardExpire, Username, Password)
-            VALUES ('SV002', 'Nguyen Van B', 'Kinh tế', 'K64', '0987654321', 'sv2@gmail.com', '2025-06-01', 'student2', ?)
-        """, (pw_sv,))
+    # ── Sample Students ────────────────────────────────────────────────────
+    sample_students = [
+        ('SV001', 'Sinh Vien Mau', 'CNTT', 'K65', '0123456789', 'sv@gmail.com', '2025-01-01'),
+        ('SV002', 'Nguyen Van B', 'Kinh tế', 'K64', '0987654321', 'sv2@gmail.com', '2025-06-01')
+    ]
+    for sid, name, fac, cls, ph, em, exp in sample_students:
+        cur.execute("SELECT COUNT(*) FROM Students WHERE StudentID=?", (sid,))
+        if cur.fetchone()[0] == 0:
+            pw_hash = hashlib.sha256(sid.encode()).hexdigest()
+            cur.execute("""
+                INSERT INTO Students (StudentID, Name, Faculty, Class, Phone, Email, CardExpire, PasswordHash)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (sid, name, fac, cls, ph, em, exp, pw_hash))
 
+    # ── FineRules ──────────────────────────────────────────────────────────
     cur.execute("SELECT COUNT(*) FROM FineRule")
     if cur.fetchone()[0] == 0:
-        cur.execute("INSERT INTO FineRule (FeePerDay,EffectiveDate) VALUES (2000,'2024-01-01')")
+        cur.execute("INSERT INTO FineRule (FeePerDay, EffectiveDate) VALUES (2000, '2024-01-01')")
     
-    # Khoi tao Sach mau neu chua co
+    # ── Sample Books ───────────────────────────────────────────────────────
     cur.execute("SELECT COUNT(*) FROM Books")
     if cur.fetchone()[0] == 0:
         books = [
@@ -122,3 +140,6 @@ def init_database():
     conn.commit()
     conn.close()
     print("[DB] Database initialized.")
+
+if __name__ == "__main__":
+    init_database()
