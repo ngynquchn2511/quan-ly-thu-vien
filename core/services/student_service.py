@@ -23,23 +23,38 @@ def get_all_students(keyword="", faculty=""):
 
 
 def add_student(student: Student):
+    import hashlib
+    pw_hash = hashlib.sha256(student.password.encode()).hexdigest() if student.password else None
     conn = get_connection()
     conn.execute("""
-        INSERT INTO Students (StudentID,Name,Faculty,Class,Phone,Email,CardExpire)
-        VALUES (?,?,?,?,?,?,?)
+        INSERT INTO Students (StudentID,Name,Faculty,Class,Phone,Email,CardExpire,Username,Password)
+        VALUES (?,?,?,?,?,?,?,?,?)
     """, (student.student_id, student.name, student.faculty,
-          student.class_, student.phone, student.email, student.card_expire))
+          student.class_, student.phone, student.email, student.card_expire,
+          student.username, pw_hash))
     conn.commit()
     conn.close()
 
 
 def update_student(student: Student):
     conn = get_connection()
-    conn.execute("""
-        UPDATE Students SET Name=?,Faculty=?,Class=?,Phone=?,Email=?,CardExpire=?
-        WHERE StudentID=?
-    """, (student.name, student.faculty, student.class_,
-          student.phone, student.email, student.card_expire, student.student_id))
+    # Neu co password thi update ca password
+    if student.password:
+        import hashlib
+        pw_hash = hashlib.sha256(student.password.encode()).hexdigest()
+        conn.execute("""
+            UPDATE Students SET Name=?,Faculty=?,Class=?,Phone=?,Email=?,CardExpire=?,Username=?,Password=?
+            WHERE StudentID=?
+        """, (student.name, student.faculty, student.class_,
+              student.phone, student.email, student.card_expire, 
+              student.username, pw_hash, student.student_id))
+    else:
+        conn.execute("""
+            UPDATE Students SET Name=?,Faculty=?,Class=?,Phone=?,Email=?,CardExpire=?,Username=?
+            WHERE StudentID=?
+        """, (student.name, student.faculty, student.class_,
+              student.phone, student.email, student.card_expire,
+              student.username, student.student_id))
     conn.commit()
     conn.close()
 
@@ -67,3 +82,14 @@ def get_faculties():
     rows = cur.fetchall()
     conn.close()
     return [r[0] for r in rows]
+
+
+def authenticate_student(username, password):
+    import hashlib
+    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute("SELECT * FROM Students WHERE Username=? AND Password=?", (username, pw_hash))
+    row  = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None

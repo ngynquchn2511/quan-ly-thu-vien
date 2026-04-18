@@ -67,93 +67,6 @@ class ClickableFrame(QFrame):
         super().mouseReleaseEvent(event)
         self.clicked.emit()
 
-class BookingDialog(QDialog):
-    def __init__(self, room_name, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Đăng ký sử dụng dịch vụ")
-        self.resize(350, 250)
-        self.setStyleSheet("background: #F8FAFC;")
-        lay = QVBoxLayout(self)
-        
-        title = QLabel(f"Đăng ký: {room_name}")
-        title.setFont(QFont("Segoe UI", 12, QFont.Bold))
-        title.setStyleSheet("color: #1A2B4C;")
-        lay.addWidget(title)
-        
-        form = QFormLayout()
-        
-        self.date_edit = QDateEdit()
-        self.date_edit.setDate(QDate.currentDate())
-        self.date_edit.setCalendarPopup(True)
-        self.date_edit.setStyleSheet("padding: 4px; border: 1px solid #CBD5E0; border-radius: 4px; background: white;")
-        
-        self.time_edit = QTimeEdit()
-        self.time_edit.setTime(QTime.currentTime().addSecs(3600))
-        self.time_edit.setStyleSheet("padding: 4px; border: 1px solid #CBD5E0; border-radius: 4px; background: white;")
-        
-        self.duration_combo = QComboBox()
-        self.duration_combo.addItems(["1 giờ", "2 giờ", "3 giờ", "4 giờ (Tối đa)"])
-        self.duration_combo.setStyleSheet("padding: 4px; border: 1px solid #CBD5E0; border-radius: 4px; background: white;")
-        
-        form.addRow("Ngày:", self.date_edit)
-        form.addRow("Giờ bắt đầu:", self.time_edit)
-        form.addRow("Thời lượng:", self.duration_combo)
-        lay.addLayout(form)
-        lay.addStretch()
-        
-        btn_row = QHBoxLayout()
-        btn_row.addStretch()
-        cancel = QPushButton("Hủy")
-        cancel.setCursor(Qt.PointingHandCursor)
-        cancel.setStyleSheet("background: #E2E8F0; color: #4A5568; padding: 6px 16px; border:none; border-radius: 6px; font-weight: bold;")
-        cancel.clicked.connect(self.reject)
-        
-        ok = QPushButton("Xác nhận")
-        ok.setCursor(Qt.PointingHandCursor)
-        ok.setStyleSheet("background: #F5C05B; color: #1A2B4C; padding: 6px 16px; border:none; border-radius: 6px; font-weight: bold;")
-        ok.clicked.connect(self.accept)
-        
-        btn_row.addWidget(cancel)
-        btn_row.addWidget(ok)
-        lay.addLayout(btn_row)
-
-class FloorPlanDialog(QDialog):
-    def __init__(self, floor_name, details, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle(f"Chi tiết {floor_name}")
-        self.resize(500, 300)
-        self.setStyleSheet("background: white;")
-        lay = QVBoxLayout(self)
-        
-        title = QLabel(f"Khu vực chức năng: {floor_name}")
-        title.setFont(QFont("Segoe UI", 14, QFont.Bold))
-        title.setStyleSheet("color: #1A2B4C;")
-        lay.addWidget(title)
-        
-        info = QLabel(f"Các khu vực chính tại {floor_name}:\n{details}")
-        info.setStyleSheet("color: #4A5568; font-size: 13px;")
-        info.setWordWrap(True)
-        lay.addWidget(info)
-        lay.addSpacing(15)
-        
-        table = QTableWidget(3, 2)
-        table.setHorizontalHeaderLabels(["Khu vực", "Tình trạng"])
-        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        table.setItem(0, 0, QTableWidgetItem(f"Khu tự học {floor_name}"))
-        table.setItem(0, 1, QTableWidgetItem("Còn trống (15 chỗ)"))
-        table.setItem(1, 0, QTableWidgetItem("Quầy/Kệ tài liệu"))
-        table.setItem(1, 1, QTableWidgetItem("Hoạt động"))
-        table.setItem(2, 0, QTableWidgetItem("Phòng tiện ích"))
-        table.setItem(2, 1, QTableWidgetItem("Đang mở"))
-        lay.addWidget(table)
-        
-        lay.addStretch()
-        btn = QPushButton("Đóng")
-        btn.clicked.connect(self.accept)
-        btn.setStyleSheet("background: #E2E8F0; padding: 6px 16px; border-radius: 6px; font-weight:bold;")
-        btn.setCursor(Qt.PointingHandCursor)
-        lay.addWidget(btn, alignment=Qt.AlignRight)
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  AvatarLabel (dùng chung)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -176,12 +89,6 @@ class AvatarLabel(QWidget):
         p.setFont(QFont(FONT_FAMILY, 10, QFont.Bold))
         p.drawText(self.rect(), Qt.AlignCenter, self._text)
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  1. HOME PAGE
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  1. HOME PAGE
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  1. HOME PAGE
@@ -224,17 +131,17 @@ class HomePage(QWidget):
         hero_lay.setSpacing(10)
 
         sub_top = QLabel("THƯ VIỆN ĐẠI HỌC CÔNG NGHỆ ĐÔNG Á")
-        sub_top.setFont(QFont(FONT_FAMILY, 10, QFont.Bold))
+        sub_top.setFont(QFont(FONT_FAMILY, 9, QFont.Bold))
         sub_top.setStyleSheet("color: rgba(255,255,255,0.7); background: transparent;")
         hero_lay.addWidget(sub_top)
 
         h1 = QLabel("Khám phá tri thức,\nnâng tầm nghiên cứu")
-        h1.setFont(QFont(FONT_FAMILY, 24, QFont.Bold))
+        h1.setFont(QFont(FONT_FAMILY, 20, QFont.Bold))
         h1.setStyleSheet("color: white; background: transparent; padding-bottom: 15px;")
         hero_lay.addWidget(h1)
 
         sub = QLabel("120.000+ tài liệu - 15 cơ sở dữ liệu quốc tế - 45.000+ luận văn số hóa")
-        sub.setFont(QFont(FONT_FAMILY, 12))
+        sub.setFont(QFont(FONT_FAMILY, 10))
         sub.setStyleSheet("color: rgba(255,255,255,0.9); background: transparent;")
         hero_lay.addWidget(sub)
 
@@ -344,7 +251,7 @@ class HomePage(QWidget):
             vlay = QVBoxLayout()
             vlay.setSpacing(2)
             lbl_val = QLabel(val)
-            lbl_val.setFont(QFont(FONT_FAMILY, 16, QFont.Bold))
+            lbl_val.setFont(QFont(FONT_FAMILY, 14, QFont.Bold))
             lbl_val.setStyleSheet("color: #1A2B4C; border: none; background: transparent;")
             vlay.addWidget(lbl_val)
             
@@ -407,14 +314,17 @@ class HomePage(QWidget):
                 lbl_badge.setFixedSize(40, 20)
                 row.addWidget(lbl_badge)
                 
-            frame = QFrame()
-            frame.setStyleSheet("border-bottom: 1px solid #E2E8F0;")
+            frame = ClickableFrame()
+            frame.setCursor(Qt.PointingHandCursor)
+            frame.setStyleSheet("QFrame { border-bottom: 1px solid #E2E8F0; } QFrame:hover { background: #F1F5F9; }")
+            frame.clicked.connect(lambda _=False, t=t_main: self._quick_search(t))
             frame.setLayout(row)
             tl_vbox.addWidget(frame)
             
         more_btn = QPushButton("Xem tất cả tài liệu mới →")
         more_btn.setStyleSheet("color: #D97706; font-size: 11px; text-align: left; border: none; padding: 10px 0;")
         more_btn.setCursor(Qt.PointingHandCursor)
+        more_btn.clicked.connect(lambda: self.portal.show_page(1))
         tl_vbox.addWidget(more_btn)
         
         tl_card.layout().addLayout(tl_vbox)
@@ -446,16 +356,27 @@ class HomePage(QWidget):
             doc_lay.addWidget(lbl_s)
             row.addLayout(doc_lay)
             
-            badge = QLabel(badge_text)
+            badge = QPushButton(badge_text)
             badge.setFixedSize(60, 24)
-            badge.setAlignment(Qt.AlignCenter)
+            badge.setCursor(Qt.PointingHandCursor)
             badge.setStyleSheet(f"""
-                background: {badge_bg};
-                color: {badge_fg};
-                border-radius: 12px;
-                font-size: 10px;
-                font-weight: bold;
+                QPushButton {{
+                    background: {badge_bg};
+                    color: {badge_fg};
+                    border-radius: 12px;
+                    font-size: 10px;
+                    font-weight: bold;
+                    border: none;
+                }}
+                QPushButton:hover {{ background: {badge_fg}; color: white; }}
             """)
+            url_map = {
+                "IEEE Xplore": "https://ieeexplore.ieee.org/",
+                "Springer Nature": "https://link.springer.com/",
+                "ScienceDirect": "https://www.sciencedirect.com/",
+                "ProQuest": "https://www.proquest.com/"
+            }
+            badge.clicked.connect(lambda _=False, nm=name, u=url_map: QDesktopServices.openUrl(QUrl(u.get(nm))))
             row.addWidget(badge)
             
             frame = QFrame()
@@ -466,6 +387,7 @@ class HomePage(QWidget):
         more_db = QPushButton("Xem tất cả CSDL →")
         more_db.setStyleSheet("color: #D97706; font-size: 11px; text-align: left; border: none; padding: 10px 0;")
         more_db.setCursor(Qt.PointingHandCursor)
+        more_db.clicked.connect(lambda: self.portal.show_page(2))
         csdl_vbox.addWidget(more_db)
         
         csdl_card.layout().addLayout(csdl_vbox)
@@ -534,6 +456,8 @@ class HomePage(QWidget):
         tb_header.addStretch()
         more_th = QPushButton("Xem tất cả")
         more_th.setStyleSheet("color: #D97706; font-size: 11px; border:none;")
+        more_th.setCursor(Qt.PointingHandCursor)
+        more_th.clicked.connect(lambda: self.portal.show_page(2)) # Navigate to CSDL as a placeholder
         tb_header.addWidget(more_th)
         tb_card.layout().insertLayout(0, tb_header)
         
@@ -578,9 +502,11 @@ class HomePage(QWidget):
             row.addLayout(vlay)
             row.addStretch()
             
-            frame = QFrame()
-            frame.setStyleSheet("border-bottom: 1px solid #E2E8F0;")
+            frame = ClickableFrame()
+            frame.setCursor(Qt.PointingHandCursor)
+            frame.setStyleSheet("QFrame { border-bottom: 1px solid #E2E8F0; } QFrame:hover { background: #F1F5F9; }")
             frame.setLayout(row)
+            frame.clicked.connect(lambda _=False, t=text, st=subtext: QMessageBox.information(self, "Thông báo", f"{t}\n\nThời gian: {st if st else 'N/A'}"))
             tb_vbox.addWidget(frame)
             
         tb_card.layout().addLayout(tb_vbox)
@@ -825,7 +751,7 @@ class ExplorePage(QWidget):
     def _search(self):
         kw = self.inp_search.text().strip()
         try:
-            from core.services.student_service import search_books
+            from core.services.book_service import search_books
             books = search_books(kw, "", "", "all")
             if hasattr(self, 'active_filter') and self.active_filter != "Tất cả":
                 f_kw = self.active_filter.lower()
@@ -965,7 +891,7 @@ class CSDLPage(QWidget):
         t_lay.addWidget(lbl1)
         
         lbl2 = QLabel("Cơ sở dữ liệu <span style='color:#F5C05B;font-style:italic;'>trực tuyến</span>")
-        lbl2.setFont(QFont(FONT_FAMILY, 24, QFont.Bold))
+        lbl2.setFont(QFont(FONT_FAMILY, 20, QFont.Bold))
         lbl2.setStyleSheet("color: white;")
         t_lay.addWidget(lbl2)
         
@@ -999,7 +925,7 @@ class CSDLPage(QWidget):
         
         for sec_name, items in sections:
             lbl = QLabel(sec_name)
-            lbl.setFont(QFont(FONT_FAMILY, 14, QFont.Bold))
+            lbl.setFont(QFont(FONT_FAMILY, 12, QFont.Bold))
             lbl.setStyleSheet("color: #1A2B4C;")
             main_lay.addWidget(lbl)
             
@@ -1102,7 +1028,7 @@ class DichVuPage(QWidget):
         t_lay.addWidget(lbl1)
         
         lbl2 = QLabel("Dịch vụ <span style='font-style:italic;'>thư viện</span>")
-        lbl2.setFont(QFont(FONT_FAMILY, 24, QFont.Bold))
+        lbl2.setFont(QFont(FONT_FAMILY, 20, QFont.Bold))
         lbl2.setStyleSheet("color: white;")
         t_lay.addWidget(lbl2)
         
@@ -1136,7 +1062,7 @@ class DichVuPage(QWidget):
         
         for sec_name, items in sections:
             lbl = QLabel(sec_name)
-            lbl.setFont(QFont(FONT_FAMILY, 14, QFont.Bold))
+            lbl.setFont(QFont(FONT_FAMILY, 12, QFont.Bold))
             lbl.setStyleSheet("color: #1A2B4C;")
             main_lay.addWidget(lbl)
             
@@ -1147,10 +1073,7 @@ class DichVuPage(QWidget):
                 c.setStyleSheet("QFrame { background: white; border: 1px solid #E2E8F0; border-radius: 12px; } QFrame:hover { border: 1px solid #A0AEC0; }")
                 c.setFixedHeight(120)
                 c.setCursor(Qt.PointingHandCursor)
-                if "Phòng" in nm or "Tủ" in nm:
-                    c.clicked.connect(lambda _=False, _nm=nm: BookingDialog(_nm, self).exec_())
-                else:
-                    c.clicked.connect(lambda _=False, _nm=nm, _d=d: QMessageBox.information(self, "Dịch vụ", f"{_nm}\n\n{_d}"))
+                c.clicked.connect(lambda _=False, _nm=nm, _d=d: QMessageBox.information(self, "Dịch vụ", f"{_nm}\n\n{_d}"))
                 
                 cl = QVBoxLayout(c)
                 cl.setContentsMargins(20, 20, 20, 20)
@@ -1209,7 +1132,7 @@ class GioiThieuPage(QWidget):
         t_lay.addWidget(lbl1)
         
         lbl2 = QLabel("Thư viện <span style='font-style:italic; color:#F5C05B;'>Đại học Công nghệ Đông Á</span>")
-        lbl2.setFont(QFont(FONT_FAMILY, 24, QFont.Bold))
+        lbl2.setFont(QFont(FONT_FAMILY, 20, QFont.Bold))
         lbl2.setStyleSheet("color: white;")
         t_lay.addWidget(lbl2)
         
@@ -1267,52 +1190,6 @@ class GioiThieuPage(QWidget):
         
         main_lay.addLayout(left_col, 1)
         
-        right_col = QVBoxLayout()
-        right_col.setSpacing(20)
-        
-        sodo = QFrame()
-        sodo.setStyleSheet("QFrame { background: white; border: 1px solid #E2E8F0; border-radius: 12px; }")
-        sl = QVBoxLayout(sodo)
-        sl.setContentsMargins(20, 20, 20, 20)
-        tl = QLabel("Sơ đồ các tầng")
-        tl.setFont(QFont(FONT_FAMILY, 13, QFont.Bold))
-        tl.setStyleSheet("color: #1A2B4C; border:none;")
-        sl.addWidget(tl)
-        
-        tangs = [("T1", "Tầng 1", "Quầy dịch vụ • Tủ khóa • In ấn"), 
-                 ("T2", "Tầng 2", "Kho CNTT • Điện tử • Toán • Phòng đọc 200 chỗ"),
-                 ("T3", "Tầng 3", "Kho Môi trường • Hóa học • Phòng máy tính"),
-                 ("T4", "Tầng 4", "Phòng nhóm • Khu học yên tĩnh")]
-                 
-        for bd, t, d in tangs:
-            rl = QHBoxLayout()
-            bdl = QLabel(bd)
-            bdl.setFixedSize(30,30)
-            bdl.setAlignment(Qt.AlignCenter)
-            bdl.setStyleSheet("background: #1A2B4C; color: white; border-radius: 6px; font-weight: bold; border:none;")
-            rl.addWidget(bdl)
-            vl = QVBoxLayout()
-            vl.setSpacing(2)
-            t_lbl = QLabel(t)
-            t_lbl.setFont(QFont(FONT_FAMILY, 11, QFont.Bold))
-            t_lbl.setStyleSheet("color: #2D3748; border:none;")
-            vl.addWidget(t_lbl)
-            d_lbl = QLabel(d)
-            d_lbl.setStyleSheet("color: #718096; font-size: 10px; border:none;")
-            vl.addWidget(d_lbl)
-            rl.addLayout(vl)
-            
-            f = ClickableFrame()
-            f.setStyleSheet("QFrame { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; } QFrame:hover { border: 1px solid #CBD5E0; background: white; }")
-            f.setCursor(Qt.PointingHandCursor)
-            f.clicked.connect(lambda _=False, _t=t, _d=d: FloorPlanDialog(_t, _d, self).exec_())
-            f.setLayout(rl)
-            sl.addWidget(f)
-            
-        right_col.addWidget(sodo)
-        right_col.addStretch()
-        main_lay.addLayout(right_col, 1)
-
         lay.addLayout(main_lay)
         scroll.setWidget(container)
         outer = QVBoxLayout(self)
@@ -1459,14 +1336,14 @@ class BookDetailPage(QWidget):
 
         # Title
         title = QLabel(book.get("Title", ""))
-        title.setFont(QFont(FONT_FAMILY, 22, QFont.Bold))
+        title.setFont(QFont(FONT_FAMILY, 18, QFont.Bold))
         title.setStyleSheet(f"color: {COLOR_TEXT_DARK}; border: none;")
         title.setWordWrap(True)
         right.addWidget(title)
 
         # Author
         author = QLabel(f"✍️ {book.get('Author', '')}")
-        author.setFont(QFont(FONT_FAMILY, 13))
+        author.setFont(QFont(FONT_FAMILY, 11))
         author.setStyleSheet(f"color: {COLOR_TEXT_MID}; border: none;")
         right.addWidget(author)
 
@@ -1623,7 +1500,7 @@ class StudentDashboard(QWidget):
         v_left.setSpacing(2)
         
         h1 = QLabel(f"Xin chào, <span style='font-style:italic; color:#F5C05B;'>{name}</span>")
-        h1.setFont(QFont(FONT_FAMILY, 24, QFont.Bold))
+        h1.setFont(QFont(FONT_FAMILY, 18, QFont.Bold))
         h1.setStyleSheet("color: white;")
         v_left.addWidget(h1)
         
@@ -1681,7 +1558,6 @@ class StudentDashboard(QWidget):
         stats = [
             ("Đang mượn", "0", "/ 6 quyển tối đa", "#1A2B4C"),
             ("Sắp hết hạn", "0", "trong 2 ngày tới", "#D97706"),
-            ("Chờ nhận", "0", "đặt trước đang xử lý", "#2563EB"),
             ("Phí phạt", "0", "cần thanh toán", "#DC2626")
         ]
         
@@ -1704,7 +1580,7 @@ class StudentDashboard(QWidget):
             cl.addWidget(tl)
             
             val_l = QLabel(val)
-            val_l.setFont(QFont(FONT_FAMILY, 20, QFont.Bold))
+            val_l.setFont(QFont(FONT_FAMILY, 16, QFont.Bold))
             val_l.setStyleSheet(f"color: {color}; border:none; margin: -5px 0;")
             cl.addWidget(val_l)
             
@@ -1835,16 +1711,15 @@ class StudentDashboard(QWidget):
             vl.addWidget(l2)
             r.addLayout(vl)
             
-            b = QPushButton("Đặt trước")
-            b.setFixedSize(70, 26)
-            b.setCursor(Qt.PointingHandCursor)
-            b.setStyleSheet("background: #1A2B4C; color: white; border:none; border-radius: 13px; font-size: 10px; font-weight:bold;")
-            b.clicked.connect(lambda _, t=ti: self._reserve_book(t))
-            r.addWidget(b)
+            r.addStretch()
             
-            fr = QFrame()
-            fr.setStyleSheet("border-bottom: 1px solid #E2E8F0;")
+            fr = ClickableFrame()
+            fr.setStyleSheet("QFrame { border-bottom: 1px solid #E2E8F0; } QFrame:hover { background: #F8FAFC; }")
+            fr.setCursor(Qt.PointingHandCursor)
             fr.setLayout(r)
+            # Search part before the dash if present
+            search_title = ti.split(" — ")[0]
+            fr.clicked.connect(lambda _=False, t=search_title: self._do_suggest_search(t))
             gl.addWidget(fr)
             
         right.addWidget(gy)
@@ -1860,7 +1735,7 @@ class StudentDashboard(QWidget):
         tcl.addWidget(tct)
         tcl.addSpacing(10)
         
-        qls = ["IEEE Xplore", "Luận văn ĐH Công nghệ Đông Á", "Đặt phòng học nhóm", "Gia hạn sách online"]
+        qls = ["IEEE Xplore", "Luận văn ĐH Công nghệ Đông Á", "Gia hạn sách online"]
         for q in qls:
             r = QHBoxLayout()
             l1 = QLabel(q)
@@ -1891,6 +1766,10 @@ class StudentDashboard(QWidget):
 
     def _do_search(self):
         kw = self.inp_search.text().strip()
+        self._do_suggest_search(kw)
+            
+    def _do_suggest_search(self, kw):
+        if not kw: return
         if hasattr(self.portal, 'explore_page'):
             self.portal.explore_page.set_keyword(kw)
             self.portal.show_page(1)
@@ -1912,7 +1791,7 @@ class StudentDashboard(QWidget):
                 self.portal.explore_page.set_keyword("Luận văn")
                 self.portal.show_page(1)
         elif "Đặt phòng" in txt:
-            BookingDialog("Phòng học nhóm", self).exec_()
+            QMessageBox.information(self, "Dịch vụ", "Phòng học nhóm\n\nVui lòng liên hệ trực tiếp tại quầy thư viện để đăng ký.")
         elif "Gia hạn" in txt:
             self._extend_all()
 
@@ -1965,7 +1844,7 @@ class StudentPortalWindow(QWidget):
         nav_lay.addSpacing(10)
         
         logo_text = QLabel("Đại học Công nghệ Đông Á")
-        logo_text.setFont(QFont(FONT_FAMILY, 12, QFont.Bold))
+        logo_text.setFont(QFont(FONT_FAMILY, 10, QFont.Bold))
         logo_text.setStyleSheet("color: white;")
         logo_text.setMinimumWidth(250)
         nav_lay.addWidget(logo_text)

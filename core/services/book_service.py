@@ -71,3 +71,30 @@ def get_categories():
     rows = cur.fetchall()
     conn.close()
     return [r[0] for r in rows]
+
+
+def search_books(keyword="", author="", category="", status="all"):
+    """
+    Search books with multiple criteria for Student Portal.
+    """
+    conn = get_connection()
+    cur  = conn.cursor()
+    sql  = "SELECT * FROM Books WHERE 1=1"
+    p    = []
+    
+    if keyword:
+        sql += " AND (Title LIKE ? OR ISBN LIKE ?)"
+        p   += [f"%{keyword}%"] * 2
+    if author:
+        sql += " AND Author LIKE ?"
+        p.append(f"%{author}%")
+    if category:
+        sql += " AND Category = ?"
+        p.append(category)
+    if status == "available":
+        sql += " AND Available > 0"
+    
+    cur.execute(sql, p)
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]

@@ -15,7 +15,7 @@ class Book:
 
 class Student:
     def __init__(self, student_id="", name="", faculty="", class_="",
-                 phone="", email="", card_expire=""):
+                 phone="", email="", card_expire="", username="", password=""):
         self.student_id  = student_id
         self.name        = name
         self.faculty     = faculty
@@ -23,6 +23,8 @@ class Student:
         self.phone       = phone
         self.email       = email
         self.card_expire = card_expire
+        self.username    = username
+        self.password    = password
 
 class Staff:
     def __init__(self, staff_id="", name="", username="",

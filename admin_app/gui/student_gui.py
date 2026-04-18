@@ -22,7 +22,7 @@ class StudentDialog(QDialog):
         super().__init__(parent)
         self.student_data = student_data
         self.setWindowTitle("Thêm độc giả" if not student_data else "Chỉnh sửa thông tin")
-        self.setFixedSize(640, 520)
+        self.setFixedSize(640, 620)
         self.setStyleSheet(f"QDialog {{ background: {styles.WHITE}; }}")
         self._build()
 
@@ -96,7 +96,6 @@ class StudentDialog(QDialog):
         r3.addLayout(c5); r3.addLayout(c6)
         lay.addLayout(r3)
 
-        # Han the
         lay.addWidget(lbl("Hạn thẻ thư viện"))
         self.inp_expire = QDateEdit()
         self.inp_expire.setFixedHeight(42)
@@ -105,6 +104,26 @@ class StudentDialog(QDialog):
         self.inp_expire.setDate(QDate.currentDate().addYears(2))
         self.inp_expire.setDisplayFormat("dd/MM/yyyy")
         lay.addWidget(self.inp_expire)
+
+        # Row 4: Account (Username + Password)
+        r4 = QHBoxLayout(); r4.setSpacing(16)
+        c7 = QVBoxLayout(); c7.setSpacing(6)
+        c7.addWidget(lbl("Tên đăng nhập *"))
+        self.inp_user = QLineEdit()
+        self.inp_user.setPlaceholderText("Tên tài khoản...")
+        self.inp_user.setFixedHeight(42)
+        self.inp_user.setStyleSheet(styles.INPUT)
+        c7.addWidget(self.inp_user)
+        c8 = QVBoxLayout(); c8.setSpacing(6)
+        c8.addWidget(lbl("Mật khẩu" + ("" if self.student_data else " *")))
+        self.inp_pass = QLineEdit()
+        self.inp_pass.setPlaceholderText("Để trống nếu không đổi..." if self.student_data else "Nhập mật khẩu...")
+        self.inp_pass.setEchoMode(QLineEdit.Password)
+        self.inp_pass.setFixedHeight(42)
+        self.inp_pass.setStyleSheet(styles.INPUT)
+        c8.addWidget(self.inp_pass)
+        r4.addLayout(c7); r4.addLayout(c8)
+        lay.addLayout(r4)
 
         # Dien san neu la sua
         if self.student_data:
@@ -120,6 +139,7 @@ class StudentDialog(QDialog):
             if exp:
                 d = QDate.fromString(exp, "yyyy-MM-dd")
                 if d.isValid(): self.inp_expire.setDate(d)
+            self.inp_user.setText(self.student_data.get("Username", "") or "")
 
         lay.addStretch()
 
@@ -141,13 +161,24 @@ class StudentDialog(QDialog):
         name = self.inp_name.text().strip()
         if not sid:  QMessageBox.warning(self, "Lỗi", "Vui lòng nhập mã sinh viên."); return
         if not name: QMessageBox.warning(self, "Lỗi", "Vui lòng nhập họ tên."); return
+        # Logic tai khoan
+        user_val = self.inp_user.text().strip()
+        pass_val = self.inp_pass.text()
+        
+        if not user_val:
+            QMessageBox.warning(self, "Lỗi", "Vui lòng nhập tên đăng nhập."); return
+        if not self.student_data and not pass_val:
+            QMessageBox.warning(self, "Lỗi", "Vui lòng nhập mật khẩu cho tài khoản mới."); return
+
         s = Student(
             student_id=sid, name=name,
             faculty=self.inp_fac.currentText(),
             class_=self.inp_class.text().strip(),
             phone=self.inp_phone.text().strip(),
             email=self.inp_email.text().strip(),
-            card_expire=self.inp_expire.date().toString("yyyy-MM-dd")
+            card_expire=self.inp_expire.date().toString("yyyy-MM-dd"),
+            username=user_val,
+            password=pass_val
         )
         try:
             if self.student_data: update_student(s)
@@ -158,7 +189,7 @@ class StudentDialog(QDialog):
 
 
 class StudentWindow(QWidget):
-    COLS = ["Mã SV", "Họ tên", "Khoa", "Lớp",
+    COLS = ["Mã SV", "Họ tên", "Tài khoản", "Khoa", "Lớp",
             "Số ĐT", "Hạn thẻ", "Trạng thái", "Thao tác"]
 
     def __init__(self, parent=None):
@@ -218,20 +249,22 @@ class StudentWindow(QWidget):
 
         hdr = self.table.horizontalHeader()
         hdr.setSectionResizeMode(0, QHeaderView.Fixed)
-        self.table.setColumnWidth(0, 120)   # Ma SV
-        hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Ho ten
+        self.table.setColumnWidth(0, 110)   # Ma SV
+        hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents) # Ho ten
         hdr.setSectionResizeMode(2, QHeaderView.Fixed)
-        self.table.setColumnWidth(2, 110)   # Khoa
+        self.table.setColumnWidth(2, 110)   # Tai khoan
         hdr.setSectionResizeMode(3, QHeaderView.Fixed)
-        self.table.setColumnWidth(3, 90)    # Lop
+        self.table.setColumnWidth(3, 100)   # Khoa
         hdr.setSectionResizeMode(4, QHeaderView.Fixed)
-        self.table.setColumnWidth(4, 140)   # So DT
+        self.table.setColumnWidth(4, 90)    # Lop
         hdr.setSectionResizeMode(5, QHeaderView.Fixed)
-        self.table.setColumnWidth(5, 120)   # Han the
+        self.table.setColumnWidth(5, 120)   # So DT
         hdr.setSectionResizeMode(6, QHeaderView.Fixed)
-        self.table.setColumnWidth(6, 200)   # Trang thai
+        self.table.setColumnWidth(6, 110)   # Han the
         hdr.setSectionResizeMode(7, QHeaderView.Fixed)
-        self.table.setColumnWidth(7, 140)   # Thao tac
+        self.table.setColumnWidth(7, 200)   # Trang thai
+        hdr.setSectionResizeMode(8, QHeaderView.Fixed)
+        self.table.setColumnWidth(8, 140)   # Thao tac
 
         lay.addWidget(self.table)
         lay.addWidget(self.lbl_count)
@@ -274,8 +307,9 @@ class StudentWindow(QWidget):
             except:
                 exp_disp = expire
 
-            vals = [sid, s.get("Name",""), s.get("Faculty",""),
-                    s.get("Class","") or "", s.get("Phone","") or "", exp_disp]
+            vals = [sid, s.get("Name",""), s.get("Username","") or "---",
+                    s.get("Faculty",""), s.get("Class","") or "", 
+                    s.get("Phone","") or "", exp_disp]
             for col, val in enumerate(vals):
                 item = QTableWidgetItem(val)
                 item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
