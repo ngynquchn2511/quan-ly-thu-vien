@@ -75,6 +75,41 @@ def init_database():
             Timestamp TEXT NOT NULL,
             Detail    TEXT
         );
+        CREATE TABLE IF NOT EXISTS Announcements (
+            AnnouncementID INTEGER PRIMARY KEY AUTOINCREMENT,
+            Title          TEXT NOT NULL,
+            Content        TEXT,
+            CreatedAt      TEXT NOT NULL,
+            IsImportant    INTEGER DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS BookReviews (
+            ReviewID   INTEGER PRIMARY KEY AUTOINCREMENT,
+            StudentID  TEXT NOT NULL,
+            BookID     TEXT NOT NULL,
+            Rating     INTEGER NOT NULL CHECK(Rating BETWEEN 1 AND 5),
+            Comment    TEXT,
+            CreatedAt  TEXT NOT NULL,
+            FOREIGN KEY (StudentID) REFERENCES Students(StudentID),
+            FOREIGN KEY (BookID)    REFERENCES Books(BookID)
+        );
+        CREATE TABLE IF NOT EXISTS BookRequests (
+            RequestID  INTEGER PRIMARY KEY AUTOINCREMENT,
+            StudentID  TEXT NOT NULL,
+            BookTitle  TEXT NOT NULL,
+            Author     TEXT,
+            Reason     TEXT,
+            Status     TEXT DEFAULT 'Pending',
+            AdminNote  TEXT,
+            CreatedAt  TEXT NOT NULL,
+            FOREIGN KEY (StudentID) REFERENCES Students(StudentID)
+        );
+        CREATE TABLE IF NOT EXISTS Favorites (
+            StudentID TEXT NOT NULL,
+            BookID    TEXT NOT NULL,
+            PRIMARY KEY (StudentID, BookID),
+            FOREIGN KEY (StudentID) REFERENCES Students(StudentID),
+            FOREIGN KEY (BookID)    REFERENCES Books(BookID)
+        );
     """)
 
     # ── Migration: ensure new columns exist ────────────────────────────────
@@ -83,6 +118,7 @@ def init_database():
         ("Students",  "CardStatus",   "TEXT DEFAULT 'active'"),
         ("Books",     "Price",        "REAL DEFAULT 0"),
         ("Borrow",    "LostDate",     "TEXT"),
+        ("Borrow",    "RenewCount",   "INTEGER DEFAULT 0"),
         ("AuditLog",  "Detail",       "TEXT"),
     ]
     for table, col, col_type in migrations:

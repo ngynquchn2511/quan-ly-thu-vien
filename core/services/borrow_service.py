@@ -269,3 +269,119 @@ def get_dashboard_stats():
         "lost":           lost,
         "blocked":        blocked,
     }
+
+
+def get_student_borrows(student_id, status_filter="all"):
+    """Lấy danh sách phiếu mượn của sinh viên."""
+    conn = get_connection()
+    cur = conn.cursor()
+    sql = """
+        SELECT b.BorrowID, b.BookID, bk.Title as BookTitle,
+               bk.Author, bk.Category,
+               b.BorrowDate, b.DueDate, b.ReturnDate,
+               b.Status, b.FineAmount, b.FinePaid,
+               b.RenewCount
+        FROM Borrow b
+        JOIN Books bk ON b.BookID = bk.BookID
+        WHERE b.StudentID = ?
+    """
+    params = [student_id]
+
+    if status_filter == "active":
+        sql += " AND b.Status IN ('Borrowing', 'Overdue')"
+    elif status_filter == "returned":
+        sql += " AND b.Status = 'Returned'"
+    elif status_filter == "overdue":
+        sql += " AND b.Status = 'Overdue'"
+
+    sql += " ORDER BY b.BorrowDate DESC"
+    cur.execute(sql, params)
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_student_stats(student_id):
+    """Lấy thống kê cá nhân cho Dashboard sinh viên."""
+    conn = get_connection()
+    cur = conn.cursor()
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    cur.execute("""
+        SELECT COUNT(*) FROM Borrow
+        WHERE StudentID=? AND Status IN ('Borrowing','Overdue')
+    """, (student_id,))
+    borrowing = cur.fetchone()[0]
+
+    cur.execute("""
+        SELECT COUNT(*) FROM Borrow
+        WHERE StudentID=? AND Status='Overdue'
+    """, (student_id,))
+    overdue = cur.fetchone()[0]
+
+    cur.execute("""
+        SELECT COALESCE(SUM(FineAmount), 0) FROM Borrow
+        WHERE StudentID=? AND Status IN ('Overdue','Lost')
+        AND (FinePaid=0 OR FinePaid IS NULL)
+    """, (student_id,))
+    total_fine = cur.fetchone()[0]
+
+    cur.execute("""
+        SELECT COUNT(*) FROM Borrow
+        WHERE StudentID=? AND Status='Returned'
+    """, (student_id,))
+    returned = cur.fetchone()[0]
+
+    # Sách sắp hết hạn (trong 3 ngày tới)
+    cur.execute("""
+        SELECT COUNT(*) FROM Borrow
+        WHERE StudentID=? AND Status='Borrowing'
+        AND DueDate BETWEEN ? AND date(?, '+3 days')
+    """, (student_id, today, today))
+    due_soon = cur.fetchone()[0]
+
+    conn.close()
+    return {
+        "borrowing":  borrowing,
+        "overdue":    overdue,
+        "total_fine": total_fine,
+        "returned":   returned,
+        "due_soon":   due_soon,
+    }
+
+
+def renew_book(borrow_id, student_id):
+    """Gia hạn sách thêm 14 ngày. Tối đa 1 lần, sách chưa quá hạn."""
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT * FROM Borrow WHERE BorrowID=? AND StudentID=?
+    """, (borrow_id, student_id))
+    borrow = cur.fetchone()
+
+    if not borrow:
+        conn.close()
+        return False, "Không tìm thấy phiếu mượn."
+
+    if borrow["Status"] != "Borrowing":
+        conn.close()
+        return False, "Chỉ được gia hạn sách đang trong thời hạn mượn."
+
+    renew_count = borrow["RenewCount"] if borrow["RenewCount"] else 0
+    if renew_count >= 1:
+        conn.close()
+        return False, "Sách đã được gia hạn rồi (tối đa 1 lần)."
+
+    # Tính ngày hạn mới
+    old_due = datetime.strptime(borrow["DueDate"], "%Y-%m-%d")
+    new_due = (old_due + timedelta(days=14)).strftime("%Y-%m-%d")
+
+    cur.execute("""
+        UPDATE Borrow SET DueDate=?, RenewCount=?
+        WHERE BorrowID=?
+    """, (new_due, renew_count + 1, borrow_id))
+
+    conn.commit()
+    conn.close()
+    return True, f"Gia hạn thành công! Hạn trả mới: {new_due}"
