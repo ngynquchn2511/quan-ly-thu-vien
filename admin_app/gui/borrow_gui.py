@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QFrame, QTableWidget, QTableWidgetItem,
     QHeaderView, QMessageBox, QAbstractItemView, QDialog,
-    QDoubleSpinBox, QScrollArea
+    QDoubleSpinBox, QScrollArea, QComboBox
 )
 from PyQt5.QtCore import Qt
 from core.services.borrow_service import (
@@ -74,8 +74,18 @@ class HistoryDialog(QDialog):
         self.inp_search.textChanged.connect(self._load)
         btn_ref = QPushButton("Làm mới"); btn_ref.setStyleSheet(styles.BTN_OUTLINE)
         btn_ref.setFixedHeight(36); btn_ref.clicked.connect(self._load)
+
+        self.cmb_status = QComboBox()
+        self.cmb_status.setStyleSheet(styles.COMBO)
+        self.cmb_status.setFixedHeight(36)
+        self.cmb_status.setFixedWidth(130)
+        self.cmb_status.addItems(["Tất cả", "Đang mượn", "Đã trả", "Quá hạn", "Mất sách"])
+        self.cmb_status.currentTextChanged.connect(self._load)
+
         hdr.addWidget(t); hdr.addStretch()
-        hdr.addWidget(self.inp_search); hdr.addWidget(btn_ref)
+        hdr.addWidget(self.inp_search)
+        hdr.addWidget(self.cmb_status)
+        hdr.addWidget(btn_ref)
         lay.addLayout(hdr)
         lay.addWidget(styles.section_divider())
 
@@ -93,16 +103,16 @@ class HistoryDialog(QDialog):
         self.table.setFocusPolicy(Qt.NoFocus)
 
         hdr2 = self.table.horizontalHeader()
-        hdr2.setSectionResizeMode(0, QHeaderView.Fixed);  self.table.setColumnWidth(0, 80)
-        hdr2.setSectionResizeMode(1, QHeaderView.Fixed);  self.table.setColumnWidth(1, 110)
-        hdr2.setSectionResizeMode(2, QHeaderView.Fixed);  self.table.setColumnWidth(2, 160)
+        hdr2.setSectionResizeMode(0, QHeaderView.Fixed);  self.table.setColumnWidth(0, 70)
+        hdr2.setSectionResizeMode(1, QHeaderView.Fixed);  self.table.setColumnWidth(1, 100)
+        hdr2.setSectionResizeMode(2, QHeaderView.Fixed);  self.table.setColumnWidth(2, 140)
         hdr2.setSectionResizeMode(3, QHeaderView.Stretch)
-        hdr2.setSectionResizeMode(4, QHeaderView.Fixed);  self.table.setColumnWidth(4, 105)
-        hdr2.setSectionResizeMode(5, QHeaderView.Fixed);  self.table.setColumnWidth(5, 100)
-        hdr2.setSectionResizeMode(6, QHeaderView.Fixed);  self.table.setColumnWidth(6, 100)
-        hdr2.setSectionResizeMode(7, QHeaderView.Fixed);  self.table.setColumnWidth(7, 110)
-        hdr2.setSectionResizeMode(8, QHeaderView.Fixed);  self.table.setColumnWidth(8, 95)
-        hdr2.setSectionResizeMode(9, QHeaderView.Fixed);  self.table.setColumnWidth(9, 80)
+        hdr2.setSectionResizeMode(4, QHeaderView.Fixed);  self.table.setColumnWidth(4, 95)
+        hdr2.setSectionResizeMode(5, QHeaderView.Fixed);  self.table.setColumnWidth(5, 90)
+        hdr2.setSectionResizeMode(6, QHeaderView.Fixed);  self.table.setColumnWidth(6, 90)
+        hdr2.setSectionResizeMode(7, QHeaderView.Fixed);  self.table.setColumnWidth(7, 130)
+        hdr2.setSectionResizeMode(8, QHeaderView.Fixed);  self.table.setColumnWidth(8, 90)
+        hdr2.setSectionResizeMode(9, QHeaderView.Fixed);  self.table.setColumnWidth(9, 75)
         lay.addWidget(self.table)
 
         self.lbl_count = QLabel()
@@ -115,8 +125,20 @@ class HistoryDialog(QDialog):
         br.addWidget(bc); lay.addLayout(br)
 
     def _load(self):
-        kw   = self.inp_search.text().strip()
-        rows = get_borrow_history(kw)
+        kw     = self.inp_search.text().strip()
+        status = self.cmb_status.currentText()
+        rows   = get_borrow_history(kw)
+
+        STATUS_MAP = {
+            "Đang mượn": "Borrowing",
+            "Đã trả":    "Returned",
+            "Quá hạn":   "Overdue",
+            "Mất sách":  "Lost",
+        }
+        if status != "Tất cả":
+            db_status = STATUS_MAP.get(status, "")
+            rows = [r for r in rows if r.get("Status","") == db_status]
+
         self.table.setRowCount(0)
 
         for i, r in enumerate(rows):
@@ -149,7 +171,7 @@ class HistoryDialog(QDialog):
             else:                       bg,fg,txt = styles.PRIMARY_LIGHT,styles.PRIMARY,"Đang mượn"
             bw = QWidget(); bl = QHBoxLayout(bw)
             bl.setContentsMargins(4,4,4,4)
-            bl.addWidget(styles.make_badge(txt, bg, fg, 90))
+            bl.addWidget(styles.make_badge(txt, bg, fg, 110))
             self.table.setCellWidget(i, 7, bw)
             self.table.setRowHeight(i, 46)
 

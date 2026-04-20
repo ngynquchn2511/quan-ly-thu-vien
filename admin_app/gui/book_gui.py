@@ -158,7 +158,7 @@ class HistoryDialog(QDialog):
         hdr2.setSectionResizeMode(0, QHeaderView.Fixed);  self.table.setColumnWidth(0, 120)
         hdr2.setSectionResizeMode(1, QHeaderView.Fixed);  self.table.setColumnWidth(1, 80)
         hdr2.setSectionResizeMode(2, QHeaderView.Fixed);  self.table.setColumnWidth(2, 140)
-        hdr2.setSectionResizeMode(3, QHeaderView.Fixed);  self.table.setColumnWidth(3, 200)
+        hdr2.setSectionResizeMode(3, QHeaderView.Fixed);  self.table.setColumnWidth(3, 130)
         hdr2.setSectionResizeMode(4, QHeaderView.Fixed);  self.table.setColumnWidth(4, 120)
         hdr2.setSectionResizeMode(5, QHeaderView.Stretch)  # Chi tiet chiem phan con lai
         lay.addWidget(self.table)
@@ -204,7 +204,7 @@ class HistoryDialog(QDialog):
                 bg, fg = styles.WARNING_BG, "#92400E"
             else:
                 bg, fg = styles.SUCCESS_BG, "#166634"
-            self.table.setCellWidget(i, 3, styles.badge_widget(action, bg, fg, 180))
+            self.table.setCellWidget(i, 3, styles.badge_widget(action, bg, fg, 110))
 
             # Chieu cao dong tu dong theo noi dung detail
             lines = max(1, len(detail) // 60 + detail.count("|") + 1)
