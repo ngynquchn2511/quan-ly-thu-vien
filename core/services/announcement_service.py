@@ -34,14 +34,14 @@ def get_announcement_count():
     return count
 
 
-def add_announcement(title, content, is_important=0):
+def add_announcement(title, content, is_important=0, staff_id=None):
     """Thêm thông báo mới (dùng cho Admin)."""
     conn = get_connection()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     conn.execute("""
-        INSERT INTO Announcements (Title, Content, CreatedAt, IsImportant)
-        VALUES (?, ?, ?, ?)
-    """, (title, content, now, is_important))
+        INSERT INTO Announcements (Title, Content, CreatedAt, IsImportant, StaffID)
+        VALUES (?, ?, ?, ?, ?)
+    """, (title, content, now, is_important, staff_id))
     conn.commit()
     conn.close()
     return True
