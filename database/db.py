@@ -57,15 +57,20 @@ def init_database():
             ReturnDate TEXT,
             Status     TEXT DEFAULT 'Borrowing',
             FineAmount REAL DEFAULT 0,
-            FinePaid   INTEGER DEFAULT 0,
-            LostDate   TEXT,
+            RenewCount INTEGER DEFAULT 0,
+            StaffID    TEXT,
+            RuleID     INTEGER,
             FOREIGN KEY (StudentID) REFERENCES Students(StudentID),
-            FOREIGN KEY (BookID)    REFERENCES Books(BookID)
+            FOREIGN KEY (BookID)    REFERENCES Books(BookID),
+            FOREIGN KEY (StaffID)   REFERENCES Staff(StaffID),
+            FOREIGN KEY (RuleID)    REFERENCES FineRule(RuleID)
         );
         CREATE TABLE IF NOT EXISTS FineRule (
             RuleID        INTEGER PRIMARY KEY AUTOINCREMENT,
             FeePerDay     REAL NOT NULL DEFAULT 2000,
-            EffectiveDate TEXT NOT NULL
+            EffectiveDate TEXT NOT NULL,
+            StaffID       TEXT,
+            FOREIGN KEY (StaffID) REFERENCES Staff(StaffID)
         );
         CREATE TABLE IF NOT EXISTS AuditLog (
             LogID     INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,24 +78,31 @@ def init_database():
             Action    TEXT NOT NULL,
             TargetID  TEXT,
             Timestamp TEXT NOT NULL,
-            Detail    TEXT
+            Detail    TEXT,
+            FOREIGN KEY (StaffID) REFERENCES Staff(StaffID)
         );
         CREATE TABLE IF NOT EXISTS Announcements (
             AnnouncementID INTEGER PRIMARY KEY AUTOINCREMENT,
+            StaffID        TEXT,
             Title          TEXT NOT NULL,
             Content        TEXT,
             CreatedAt      TEXT NOT NULL,
-            IsImportant    INTEGER DEFAULT 0
+            IsImportant    INTEGER DEFAULT 0,
+            RelatedBookID  TEXT,
+            FOREIGN KEY (StaffID) REFERENCES Staff(StaffID),
+            FOREIGN KEY (RelatedBookID) REFERENCES Books(BookID)
         );
         CREATE TABLE IF NOT EXISTS BookReviews (
             ReviewID   INTEGER PRIMARY KEY AUTOINCREMENT,
             StudentID  TEXT NOT NULL,
             BookID     TEXT NOT NULL,
+            BorrowID   INTEGER,
             Rating     INTEGER NOT NULL CHECK(Rating BETWEEN 1 AND 5),
             Comment    TEXT,
             CreatedAt  TEXT NOT NULL,
             FOREIGN KEY (StudentID) REFERENCES Students(StudentID),
-            FOREIGN KEY (BookID)    REFERENCES Books(BookID)
+            FOREIGN KEY (BookID)    REFERENCES Books(BookID),
+            FOREIGN KEY (BorrowID)  REFERENCES Borrow(BorrowID)
         );
         CREATE TABLE IF NOT EXISTS BookRequests (
             RequestID  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -101,7 +113,11 @@ def init_database():
             Status     TEXT DEFAULT 'Pending',
             AdminNote  TEXT,
             CreatedAt  TEXT NOT NULL,
-            FOREIGN KEY (StudentID) REFERENCES Students(StudentID)
+            StaffID    TEXT,
+            AcquiredBookID TEXT,
+            FOREIGN KEY (StudentID) REFERENCES Students(StudentID),
+            FOREIGN KEY (StaffID)   REFERENCES Staff(StaffID),
+            FOREIGN KEY (AcquiredBookID) REFERENCES Books(BookID)
         );
         CREATE TABLE IF NOT EXISTS Favorites (
             StudentID TEXT NOT NULL,
@@ -120,6 +136,14 @@ def init_database():
         ("Borrow",    "LostDate",     "TEXT"),
         ("Borrow",    "RenewCount",   "INTEGER DEFAULT 0"),
         ("AuditLog",  "Detail",       "TEXT"),
+        ("Announcements", "StaffID",  "TEXT"),
+        ("Borrow",        "StaffID",  "TEXT"),
+        ("FineRule",      "StaffID",  "TEXT"),
+        ("BookRequests",  "StaffID",  "TEXT"),
+        ("Borrow",        "RuleID",   "INTEGER"),
+        ("BookReviews",   "BorrowID", "INTEGER"),
+        ("BookRequests",  "AcquiredBookID", "TEXT"),
+        ("Announcements", "RelatedBookID", "TEXT")
     ]
     for table, col, col_type in migrations:
         cur.execute(f"PRAGMA table_info({table})")
