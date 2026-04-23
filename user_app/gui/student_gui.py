@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (
     QGraphicsDropShadowEffect, QRadioButton, QButtonGroup, QComboBox,
     QMessageBox, QDesktopWidget, QSpacerItem, QApplication,
     QDialog, QDateEdit, QTimeEdit, QFormLayout, QTableWidget,
-    QTableWidgetItem, QHeaderView, QTextEdit, QSpinBox
+    QTableWidgetItem, QHeaderView, QTextEdit, QSpinBox, QStyledItemDelegate
 )
 from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QSize, pyqtSignal, QUrl, QDate, QTime
 from PyQt5.QtGui import QFont, QColor, QPainter, QPainterPath, QCursor, QLinearGradient, QDesktopServices
@@ -358,7 +358,11 @@ class HomePage(QWidget):
                 row.addStretch()
 
                 frame = QFrame()
-                frame.setStyleSheet("QFrame { border-bottom: 1px solid #E2E8F0; }")
+                frame.setObjectName("NoticeRow")
+                frame.setStyleSheet("""
+                    QFrame#NoticeRow { border-bottom: 1px solid #F1F5F9; border-radius: 8px; margin: 2px 10px; }
+                    QFrame#NoticeRow:hover { background: #F8FAFC; border-bottom: 1px solid transparent; }
+                """)
                 frame.setLayout(row)
                 tb_vbox.addWidget(frame)
         else:
@@ -374,20 +378,22 @@ class HomePage(QWidget):
 
     def _make_section_card(self, title):
         card = QFrame()
+        card.setObjectName("SectionCard")
         card.setStyleSheet("""
-            QFrame {
+            QFrame#SectionCard {
                 background: white;
-                border: 1px solid #E2E8F0;
-                border-radius: 8px;
+                border: 1px solid #F1F5F9;
+                border-radius: 16px;
             }
         """)
+        _shadow(card, blur=24, offset_y=6, alpha=25)
         lay = QVBoxLayout(card)
         lay.setContentsMargins(20, 20, 20, 10)
         lay.setSpacing(10)
 
         if title:
             title_lbl = QLabel(title)
-            title_lbl.setFont(QFont(FONT_FAMILY, 13, QFont.Bold))
+            title_lbl.setFont(QFont(FONT_FAMILY, 14, QFont.Bold))
             title_lbl.setStyleSheet("color: #1A2B4C; border: none;")
             lay.addWidget(title_lbl)
 
@@ -395,14 +401,15 @@ class HomePage(QWidget):
 
     def _make_book_row(self, title, subtitle, badge_text, badge_bg, badge_fg, book_data=None):
         row = QHBoxLayout()
+        row.setContentsMargins(12, 10, 12, 10)
         doc_lay = QVBoxLayout()
-        doc_lay.setSpacing(2)
+        doc_lay.setSpacing(4)
         lbl_main = QLabel(title)
-        lbl_main.setFont(QFont(FONT_FAMILY, 11, QFont.Bold))
+        lbl_main.setFont(QFont(FONT_FAMILY, 12, QFont.Bold))
         lbl_main.setStyleSheet("color: #2D3748; border: none;")
 
         lbl_sub = QLabel(subtitle)
-        lbl_sub.setStyleSheet("color: #718096; font-size: 10px; border: none;")
+        lbl_sub.setStyleSheet("color: #718096; font-size: 11px; border: none;")
 
         doc_lay.addWidget(lbl_main)
         doc_lay.addWidget(lbl_sub)
@@ -411,16 +418,28 @@ class HomePage(QWidget):
         lbl_badge = QLabel(badge_text)
         lbl_badge.setStyleSheet(f"""
             background: {badge_bg}; color: {badge_fg};
-            border-radius: 10px; padding: 2px 8px;
-            font-size: 10px; font-weight: bold;
+            border-radius: 12px; padding: 4px 10px;
+            font-size: 10px; font-weight: bold; border: none;
         """)
         lbl_badge.setAlignment(Qt.AlignCenter)
-        lbl_badge.setFixedHeight(20)
+        lbl_badge.setFixedHeight(24)
         row.addWidget(lbl_badge)
 
         frame = ClickableFrame()
+        frame.setObjectName("BookRow")
         frame.setCursor(Qt.PointingHandCursor)
-        frame.setStyleSheet("QFrame { border-bottom: 1px solid #E2E8F0; } QFrame:hover { background: #F1F5F9; }")
+        frame.setStyleSheet("""
+            QFrame#BookRow {
+                background: transparent;
+                border-bottom: 1px solid #F1F5F9;
+                border-radius: 8px;
+                margin: 2px 10px;
+            }
+            QFrame#BookRow:hover {
+                background: #F8FAFC;
+                border-bottom: 1px solid transparent;
+            }
+        """)
         frame.setLayout(row)
         if book_data:
             frame.clicked.connect(lambda _=False, b=book_data: self._open_book(b))
@@ -530,28 +549,36 @@ class ExplorePage(QWidget):
         # Left: Kết quả
         left_col = QVBoxLayout()
         self.lbl_count = QLabel("Hiển thị 0 kết quả")
-        self.lbl_count.setStyleSheet("color: #718096; font-size: 11px;")
+        self.lbl_count.setStyleSheet("color: #718096; font-size: 13px; font-weight: bold; margin-bottom: 8px;")
         left_col.addWidget(self.lbl_count)
 
-        self.v_list = QVBoxLayout()
-        self.v_list.setSpacing(12)
+        self.list_container = QFrame()
+        self.list_container.setObjectName("ExploreListContainer")
+        self.list_container.setStyleSheet("QFrame#ExploreListContainer { background: white; border: 1px solid #F1F5F9; border-radius: 16px; }")
+        _shadow(self.list_container, 24, 6, 25)
+
+        self.v_list = QVBoxLayout(self.list_container)
+        self.v_list.setContentsMargins(15, 10, 15, 10)
+        self.v_list.setSpacing(0)
         self.v_list.setAlignment(Qt.AlignTop)
 
-        left_col.addLayout(self.v_list)
+        left_col.addWidget(self.list_container)
         left_col.addStretch()
         main_lay.addLayout(left_col, 3)
 
         # Right: Lọc theo thể loại (dữ liệu thật)
         right_col = QVBoxLayout()
         filter_card = QFrame()
-        filter_card.setStyleSheet("QFrame { background: white; border: 1px solid #E2E8F0; border-radius: 12px; }")
+        filter_card.setObjectName("ExploreFilterCard")
+        filter_card.setStyleSheet("QFrame#ExploreFilterCard { background: white; border: 1px solid #F1F5F9; border-radius: 16px; }")
+        _shadow(filter_card, 24, 6, 25)
         fc_lay = QVBoxLayout(filter_card)
-        fc_lay.setContentsMargins(20, 20, 20, 20)
-        fc_lay.setSpacing(10)
+        fc_lay.setContentsMargins(24, 24, 24, 24)
+        fc_lay.setSpacing(16)
 
         flbl = QLabel("Lọc theo thể loại")
-        flbl.setFont(QFont(FONT_FAMILY, 12, QFont.Bold))
-        flbl.setStyleSheet("border:none;")
+        flbl.setFont(QFont(FONT_FAMILY, 13, QFont.Bold))
+        flbl.setStyleSheet("border:none; color: #1A2B4C;")
         fc_lay.addWidget(flbl)
 
         self.cat_combo = QComboBox()
@@ -564,10 +591,31 @@ class ExplorePage(QWidget):
                     self.cat_combo.addItem(c)
         except:
             pass
+        self.cat_combo.setItemDelegate(QStyledItemDelegate())
         self.cat_combo.setStyleSheet("""
             QComboBox {
-                padding: 8px 12px; border: 1px solid #E2E8F0;
-                border-radius: 6px; font-size: 12px;
+                padding: 10px 14px; border: 1px solid #E2E8F0; color: #1A2B4C;
+                border-radius: 8px; font-size: 13px; background: white;
+            }
+            QComboBox::drop-down { border: none; width: 30px; }
+            QComboBox:hover { border: 1px solid #CBD5E1; }
+            QComboBox QAbstractItemView {
+                border: 1px solid #E2E8F0;
+                border-radius: 6px;
+                background: white;
+                selection-background-color: #EEF2FF;
+                selection-color: #4F46E5;
+                color: #2D3748;
+                outline: 0px;
+            }
+            QComboBox QAbstractItemView::item {
+                min-height: 36px;
+                padding-left: 10px;
+                border: none;
+            }
+            QComboBox QAbstractItemView::item:hover {
+                background: #F8FAFC;
+                color: #4F46E5;
             }
         """)
         self.cat_combo.currentTextChanged.connect(lambda: self._search())
@@ -621,44 +669,63 @@ class ExplorePage(QWidget):
 
         self.lbl_count.setText(f"Hiển thị {len(books)} kết quả")
 
+        if not books:
+            no_data = QLabel("Không tìm thấy kết quả nào phù hợp.")
+            no_data.setStyleSheet("color: #A0AEC0; font-size: 13px; padding: 40px; border: none;")
+            no_data.setAlignment(Qt.AlignCenter)
+            self.v_list.addWidget(no_data)
+            return
+
         for book in books:
             card = self._make_list_item(book)
             self.v_list.addWidget(card)
 
     def _make_list_item(self, book):
-        card = QFrame()
-        card.setStyleSheet("QFrame { background: white; border: 1px solid #E2E8F0; border-radius: 8px; }")
-        card.setFixedHeight(110)
+        card = ClickableFrame()
+        card.setObjectName("ExploreRowItem")
+        card.setCursor(Qt.PointingHandCursor)
+        card.setStyleSheet("""
+            QFrame#ExploreRowItem {
+                background: transparent;
+                border-bottom: 1px solid #F1F5F9;
+                border-radius: 8px;
+            }
+            QFrame#ExploreRowItem:hover {
+                background: #F8FAFC;
+                border-bottom: 1px solid transparent;
+            }
+        """)
+        card.setFixedHeight(100)
 
         lay = QHBoxLayout(card)
-        lay.setContentsMargins(20, 15, 20, 15)
-        lay.setSpacing(15)
+        lay.setContentsMargins(16, 12, 16, 12)
+        lay.setSpacing(16)
 
         # Cover
         cat_info = _cat(book.get("Category", ""))
         cover = QLabel(cat_info["icon"])
         cover.setFixedSize(50, 70)
         cover.setAlignment(Qt.AlignCenter)
-        cover.setStyleSheet(f"background: {cat_info['bg']}; border-radius: 4px; font-size: 20px;")
+        cover.setStyleSheet(f"background: {cat_info['bg']}; border-radius: 8px; font-size: 24px; border: none;")
         lay.addWidget(cover)
 
         # Info
         mid = QVBoxLayout()
-        mid.setSpacing(4)
+        mid.setSpacing(6)
         title = QLabel(book.get("Title", ""))
-        title.setFont(QFont(FONT_FAMILY, 12, QFont.Bold))
+        title.setFont(QFont(FONT_FAMILY, 14, QFont.Bold))
         title.setStyleSheet("color: #1A2B4C; border: none;")
         mid.addWidget(title)
 
         author = QLabel(f"{book.get('Author', '')} • {book.get('Category', '')} • {book.get('Year', '')}")
-        author.setStyleSheet("color: #718096; font-size: 11px; border: none;")
+        author.setStyleSheet("color: #718096; font-size: 12px; border: none;")
         mid.addWidget(author)
 
         avail = book.get("Available", 0)
         qty = book.get("Quantity", 0)
         avail_lbl = QLabel(f"Còn {avail}/{qty} cuốn")
         avail_color = "#059669" if avail > 0 else "#DC2626"
-        avail_lbl.setStyleSheet(f"color: {avail_color}; font-size: 10px; border: none; font-weight: bold;")
+        avail_lbl.setStyleSheet(f"color: {avail_color}; font-size: 11px; border: none; font-weight: bold;")
         mid.addWidget(avail_lbl)
 
         lay.addLayout(mid, 1)
@@ -667,14 +734,20 @@ class ExplorePage(QWidget):
         right = QVBoxLayout()
         right.setSpacing(6)
 
-        b2 = QPushButton("Xem chi tiết")
+        b2 = QPushButton("Chi tiết")
+        b2.setFixedSize(80, 32)
         b2.setCursor(Qt.PointingHandCursor)
-        b2.setStyleSheet("background: #1A2B4C; color: white; border-radius: 6px; padding: 6px 16px; font-size: 11px; font-weight: bold;")
+        b2.setStyleSheet("""
+            QPushButton { background: #EEF2FF; color: #4F46E5; border-radius: 8px; font-size: 12px; font-weight: bold; border: none; }
+            QPushButton:hover { background: #4F46E5; color: white; }
+        """)
         b2.clicked.connect(lambda _, b=book: self._open_book(b))
 
         right.addWidget(b2)
         right.addStretch()
         lay.addLayout(right)
+
+        card.clicked.connect(lambda _=False, b=book: self._open_book(b))
 
         return card
 
@@ -1362,6 +1435,61 @@ class StudentDashboard(QWidget):
             gl.addWidget(no_lbl)
 
         right_col.addWidget(gy)
+
+        # ── Sách yêu thích ──
+        fav = QFrame()
+        fav.setStyleSheet("QFrame { background: white; border: 1px solid #E2E8F0; border-radius: 12px; }")
+        fl = QVBoxLayout(fav)
+        fl.setContentsMargins(20, 20, 20, 20)
+        fl.setSpacing(0)
+
+        flt = QLabel("❤️ Sách yêu thích")
+        flt.setFont(QFont(FONT_FAMILY, 12, QFont.Bold))
+        flt.setStyleSheet("color: #1A2B4C; border:none;")
+        fl.addWidget(flt)
+        fl.addSpacing(12)
+
+        try:
+            from core.services.book_service import get_favorites
+            fav_books = get_favorites(sid)
+        except:
+            fav_books = []
+
+        if fav_books:
+            for book in fav_books[:4]:
+                rf = QHBoxLayout()
+                rf.setContentsMargins(0, 8, 0, 8)
+                vlf = QVBoxLayout()
+                vlf.setSpacing(2)
+                l1f = QLabel(book.get("Title", ""))
+                l1f.setFont(QFont(FONT_FAMILY, 11, QFont.Bold))
+                l1f.setStyleSheet("color: #2D3748; border:none;")
+                vlf.addWidget(l1f)
+                l2f = QLabel(f"{book.get('Author', '')} • {book.get('Category', '')}")
+                l2f.setStyleSheet("color: #718096; font-size: 10px; border:none;")
+                vlf.addWidget(l2f)
+                rf.addLayout(vlf)
+                rf.addStretch()
+
+                frf = ClickableFrame()
+                frf.setStyleSheet("QFrame { border-bottom: 1px solid #E2E8F0; } QFrame:hover { background: #F8FAFC; }")
+                frf.setCursor(Qt.PointingHandCursor)
+                frf.setLayout(rf)
+                frf.clicked.connect(lambda _=False, b=book: self._open_book(b))
+                fl.addWidget(frf)
+                
+            if len(fav_books) > 4:
+                more_lbl = QLabel(f"và {len(fav_books)-4} sách khác...")
+                more_lbl.setStyleSheet("color: #A0AEC0; font-size: 11px; font-style: italic; border:none; padding: 10px 0 0 0;")
+                fl.addWidget(more_lbl)
+        else:
+            nof_lbl = QLabel("Bạn chưa đánh dấu yêu thích cuốn nào.")
+            nof_lbl.setStyleSheet("color: #A0AEC0; font-size: 11px; border:none; padding: 10px;")
+            nof_lbl.setWordWrap(True)
+            fl.addWidget(nof_lbl)
+
+        right_col.addWidget(fav)
+
         right_col.addStretch()
         main_area.addLayout(right_col, 4)
 
@@ -2157,10 +2285,10 @@ class StudentPortalWindow(QWidget):
         nav_lay.addWidget(logo)
         nav_lay.addSpacing(10)
 
-        logo_text = QLabel("Đại học Công nghệ Đông Á")
-        logo_text.setFont(QFont(FONT_FAMILY, 10, QFont.Bold))
+        logo_text = QLabel("ĐH Công nghệ Đông Á")
+        logo_text.setFont(QFont(FONT_FAMILY, 11, QFont.Bold))
         logo_text.setStyleSheet("color: white;")
-        logo_text.setMinimumWidth(200)
+        logo_text.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
         nav_lay.addWidget(logo_text)
         nav_lay.addSpacing(16)
 
@@ -2171,9 +2299,7 @@ class StudentPortalWindow(QWidget):
             (1, "🔍 Tra cứu"),
             (3, "📊 Cá nhân"),
             (4, "📋 Lịch sử"),
-            (5, "📝 Đề xuất sách"),
-            (6, "🔔 Thông báo"),
-            (7, "👤 Hồ sơ"),
+            (5, "📝 Đề xuất"),
         ]
         for idx, label in nav_items:
             btn = QPushButton(label)
@@ -2193,32 +2319,36 @@ class StudentPortalWindow(QWidget):
         except:
             ann_count = 0
 
-        if ann_count > 0:
-            bell_btn = QPushButton(f"🔔 {ann_count}")
-            bell_btn.setCursor(Qt.PointingHandCursor)
-            bell_btn.setFixedHeight(32)
-            bell_btn.setStyleSheet("""
-                QPushButton {
-                    background: #F5C05B; color: #1A2B4C; font-weight: bold;
-                    border: none; border-radius: 16px; padding: 0 12px; font-size: 12px;
-                }
-                QPushButton:hover { background: #ECC94B; }
-            """)
-            bell_btn.clicked.connect(lambda: self.show_page(6))
-            nav_lay.addWidget(bell_btn)
-            nav_lay.addSpacing(12)
+        bell_text = f"🔔 {ann_count}" if ann_count > 0 else "🔔"
+        bell_btn = QPushButton(bell_text)
+        bell_btn.setCursor(Qt.PointingHandCursor)
+        bell_btn.setFixedHeight(32)
+        bell_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(255, 255, 255, 0.15); color: white; font-weight: bold;
+                border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 0 14px; font-size: 13px;
+            }
+            QPushButton:hover { background: rgba(255, 255, 255, 0.25); border: 1px solid rgba(255, 255, 255, 0.4); }
+        """)
+        bell_btn.clicked.connect(lambda: self.show_page(6))
+        nav_lay.addWidget(bell_btn)
+        nav_lay.addSpacing(16)
 
         name = self.current_student.get("Name", "Sinh viên")
         initials = "".join(w[0] for w in name.split()[:2]).upper() or "SV"
 
-        avatar = AvatarLabel(initials, "rgba(255,255,255,0.25)", "white", 34, 17)
+        avatar = AvatarLabel(initials, "rgba(255,255,255,0.25)", "white", 32, 12)
         nav_lay.addWidget(avatar)
-        nav_lay.addSpacing(10)
+        nav_lay.addSpacing(8)
 
-        name_lbl = QLabel(name)
-        name_lbl.setFont(QFont(FONT_FAMILY, 11, QFont.Bold))
-        name_lbl.setStyleSheet("color: rgba(255,255,255,0.95);")
-        nav_lay.addWidget(name_lbl)
+        name_btn = QPushButton(name)
+        name_btn.setCursor(Qt.PointingHandCursor)
+        name_btn.setStyleSheet("""
+            QPushButton { background: transparent; color: rgba(255,255,255,0.95); font-weight: bold; font-size: 13px; border: none; text-align: left; }
+            QPushButton:hover { color: #F5C05B; text-decoration: underline; }
+        """)
+        name_btn.clicked.connect(lambda: self.show_page(7))
+        nav_lay.addWidget(name_btn)
         nav_lay.addSpacing(16)
 
         btn_logout = QPushButton("Đăng xuất")
