@@ -1,14 +1,13 @@
 """
-Unified Login Window – dùng chung cho cả Admin và Sinh viên.
-Chọn vai trò → nhập tài khoản/mật khẩu → hệ thống mở đúng app.
+Unified Login Window – tự nhận diện Admin hay Sinh viên.
+Nhập tài khoản/mật khẩu → hệ thống tự kiểm tra Staff trước, rồi Student.
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QFrame, QGraphicsDropShadowEffect, QDesktopWidget,
-    QButtonGroup, QRadioButton
+    QPushButton, QFrame, QGraphicsDropShadowEffect, QDesktopWidget
 )
 from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint
 from PyQt5.QtGui import QFont, QColor, QPainter, QPainterPath
@@ -75,28 +74,6 @@ STYLE_ERROR = """
         font-size: 12px;
     }
 """
-STYLE_RADIO = f"""
-    QRadioButton {{
-        color: {COLOR_TEXT_DARK};
-        font-size: 13px;
-        font-weight: 600;
-        spacing: 8px;
-        border: none;
-    }}
-    QRadioButton::indicator {{
-        width: 18px; height: 18px;
-        border: 2px solid {COLOR_BORDER};
-        border-radius: 9px;
-        background: white;
-    }}
-    QRadioButton::indicator:checked {{
-        border: 2px solid {COLOR_PRIMARY};
-        background: {COLOR_PRIMARY};
-    }}
-    QRadioButton::indicator:hover {{
-        border: 2px solid {COLOR_PRIMARY};
-    }}
-"""
 
 
 # ── Logo widget ───────────────────────────────────────────────────────────────
@@ -127,7 +104,7 @@ class UnifiedLoginWindow(QWidget):
         super().__init__()
         self.setObjectName("LoginWindow")
         self.setWindowTitle(APP_NAME)
-        self.setFixedSize(500, 600)
+        self.setFixedSize(500, 520)
         self.setStyleSheet(STYLE_WINDOW)
         self._build_ui()
         self._center()
@@ -178,30 +155,7 @@ class UnifiedLoginWindow(QWidget):
         div.setFrameShape(QFrame.HLine)
         div.setStyleSheet(f"color: {COLOR_BORDER};")
         lay.addWidget(div)
-        lay.addSpacing(18)
-
-        # Role selector
-        lay.addWidget(self._field_label("Vai trò"))
-        lay.addSpacing(6)
-
-        role_row = QHBoxLayout()
-        role_row.setSpacing(20)
-
-        self.radio_staff = QRadioButton("👨‍💼 Admin / Nhân viên")
-        self.radio_student = QRadioButton("🎓 Sinh viên")
-        self.radio_staff.setStyleSheet(STYLE_RADIO)
-        self.radio_student.setStyleSheet(STYLE_RADIO)
-        self.radio_student.setChecked(True)
-
-        self.role_group = QButtonGroup()
-        self.role_group.addButton(self.radio_staff, 0)
-        self.role_group.addButton(self.radio_student, 1)
-
-        role_row.addWidget(self.radio_staff)
-        role_row.addWidget(self.radio_student)
-        role_row.addStretch()
-        lay.addLayout(role_row)
-        lay.addSpacing(16)
+        lay.addSpacing(20)
 
         # Username
         lay.addWidget(self._field_label("Tài khoản"))
@@ -248,7 +202,6 @@ class UnifiedLoginWindow(QWidget):
         self.inp_user.returnPressed.connect(lambda: self.inp_pass.setFocus())
         self.inp_user.textChanged.connect(self.lbl_err.hide)
         self.inp_pass.textChanged.connect(self.lbl_err.hide)
-        self.role_group.buttonClicked.connect(self.lbl_err.hide)
 
     def _field_label(self, text):
         lbl = QLabel(text)
@@ -258,7 +211,7 @@ class UnifiedLoginWindow(QWidget):
         )
         return lbl
 
-    # ── Logic đăng nhập ──────────────────────────────────────────────────
+    # ── Logic đăng nhập (tự nhận diện) ───────────────────────────────────
     def _login(self):
         username = self.inp_user.text().strip()
         password = self.inp_pass.text()
@@ -272,31 +225,28 @@ class UnifiedLoginWindow(QWidget):
             self.inp_pass.setFocus()
             return
 
-        is_staff = self.radio_staff.isChecked()
+        # 1. Thử đăng nhập Staff (Admin/Nhân viên) trước
+        from core.services.staff_service import authenticate
+        user = authenticate(username, password)
+        if user:
+            from admin_app.gui.dashboard import DashboardWindow
+            self.dashboard = DashboardWindow(current_user=user)
+            self.dashboard.show()
+            self.close()
+            return
 
-        if is_staff:
-            # Đăng nhập Admin / Nhân viên
-            from core.services.staff_service import authenticate
-            user = authenticate(username, password)
-            if user:
-                from admin_app.gui.dashboard import DashboardWindow
-                self.dashboard = DashboardWindow(current_user=user)
-                self.dashboard.show()
-                self.close()
-                return
-            self._err("Tài khoản hoặc mật khẩu không chính xác.")
-        else:
-            # Đăng nhập Sinh viên
-            from core.services.student_service import authenticate_student
-            student = authenticate_student(username, password)
-            if student:
-                from user_app.gui.student_gui import StudentPortalWindow
-                self.portal = StudentPortalWindow(current_student=student)
-                self.portal.show()
-                self.close()
-                return
-            self._err("Mã sinh viên hoặc mật khẩu không chính xác.")
+        # 2. Thử đăng nhập Student
+        from core.services.student_service import authenticate_student
+        student = authenticate_student(username, password)
+        if student:
+            from user_app.gui.student_gui import StudentPortalWindow
+            self.portal = StudentPortalWindow(current_student=student)
+            self.portal.show()
+            self.close()
+            return
 
+        # 3. Sai tài khoản
+        self._err("Tài khoản hoặc mật khẩu không chính xác.")
         self.inp_pass.clear()
         self.inp_pass.setFocus()
         self._shake()
