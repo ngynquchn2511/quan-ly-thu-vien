@@ -350,7 +350,7 @@ class BorrowWindow(QWidget):
         hdr.setSectionResizeMode(3, QHeaderView.Stretch)                                   # Ten sach
         hdr.setSectionResizeMode(4, QHeaderView.Fixed); self.table.setColumnWidth(4, 110)  # Ngay muon
         hdr.setSectionResizeMode(5, QHeaderView.Fixed); self.table.setColumnWidth(5, 105)  # Han tra
-        hdr.setSectionResizeMode(6, QHeaderView.Fixed); self.table.setColumnWidth(6, 120)  # Trang thai
+        hdr.setSectionResizeMode(6, QHeaderView.Fixed); self.table.setColumnWidth(6, 145)  # Trang thai
         hdr.setSectionResizeMode(7, QHeaderView.Fixed); self.table.setColumnWidth(7, 100)  # Tien phat
         hdr.setSectionResizeMode(8, QHeaderView.Fixed); self.table.setColumnWidth(8, 140)  # Thao tac
         rl.addWidget(self.table)
@@ -434,7 +434,7 @@ class BorrowWindow(QWidget):
 
             bw_badge = QWidget(); bl_badge = QHBoxLayout(bw_badge)
             bl_badge.setContentsMargins(6,4,6,4)
-            bl_badge.addWidget(styles.make_badge(txt, bg, fg, 100))
+            bl_badge.addWidget(styles.make_badge(txt, bg, fg, 130))
             self.table.setCellWidget(i, 6, bw_badge)
 
             # Tien phat
