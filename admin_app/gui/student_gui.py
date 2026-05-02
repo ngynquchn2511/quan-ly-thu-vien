@@ -38,7 +38,6 @@ class StudentDialog(QDialog):
 
         def lbl(t): return styles.field_label(t)
 
-        # Row 1: Ma SV + Ho ten
         r1 = QHBoxLayout(); r1.setSpacing(16)
         c1 = QVBoxLayout(); c1.setSpacing(6)
         c1.addWidget(lbl("Mã sinh viên *"))
@@ -57,15 +56,13 @@ class StudentDialog(QDialog):
         r1.addLayout(c1); r1.addLayout(c2)
         lay.addLayout(r1)
 
-        # Row 2: Khoa + Lop
         r2 = QHBoxLayout(); r2.setSpacing(16)
         c3 = QVBoxLayout(); c3.setSpacing(6)
         c3.addWidget(lbl("Khoa"))
         self.inp_fac = QComboBox()
         self.inp_fac.setFixedHeight(42)
         self.inp_fac.setStyleSheet(styles.COMBO)
-        self.inp_fac.addItems(["CNTT", "Kinh tế", "Cơ điện",
-                               "Ngoại ngữ", "Khoa học", "Khác"])
+        self.inp_fac.addItems(["CNTT", "Kinh tế", "Cơ điện", "Ngoại ngữ", "Khoa học", "Khác"])
         c3.addWidget(self.inp_fac)
         c4 = QVBoxLayout(); c4.setSpacing(6)
         c4.addWidget(lbl("Lớp"))
@@ -77,7 +74,6 @@ class StudentDialog(QDialog):
         r2.addLayout(c3); r2.addLayout(c4)
         lay.addLayout(r2)
 
-        # Row 3: SDT + Email
         r3 = QHBoxLayout(); r3.setSpacing(16)
         c5 = QVBoxLayout(); c5.setSpacing(6)
         c5.addWidget(lbl("Số điện thoại"))
@@ -121,7 +117,6 @@ class StudentDialog(QDialog):
         r4.addLayout(c7)
         lay.addLayout(r4)
 
-        # Dien san neu la sua
         if self.student_data:
             self.inp_id.setText(self.student_data.get("StudentID", ""))
             self.inp_id.setEnabled(False)
@@ -139,7 +134,6 @@ class StudentDialog(QDialog):
 
         lay.addStretch()
 
-        # Buttons
         br = QHBoxLayout(); br.setSpacing(10); br.addStretch()
         bc = QPushButton("Huỷ")
         bc.setStyleSheet(styles.BTN_OUTLINE)
@@ -161,7 +155,6 @@ class StudentDialog(QDialog):
         pass_val = self.inp_pass.text()
         if not self.student_data and not pass_val:
             QMessageBox.warning(self, "Lỗi", "Vui lòng nhập mật khẩu cho tài khoản mới."); return
-
         s = Student(
             student_id=sid, name=name,
             faculty=self.inp_fac.currentText(),
@@ -193,40 +186,33 @@ class StudentWindow(QWidget):
         lay.setContentsMargins(24, 18, 24, 18)
         lay.setSpacing(14)
 
-        # Toolbar
         tb = QHBoxLayout(); tb.setSpacing(10)
         self.btn_add = QPushButton("+ Thêm độc giả")
         self.btn_add.setStyleSheet(styles.BTN_PRIMARY)
         self.btn_add.setFixedHeight(40)
         self.btn_add.clicked.connect(self._add)
-
         self.btn_ref = QPushButton("Làm mới")
         self.btn_ref.setStyleSheet(styles.BTN_OUTLINE)
         self.btn_ref.setFixedHeight(40)
         self.btn_ref.clicked.connect(self.refresh)
-
         self.inp_search = QLineEdit()
         self.inp_search.setPlaceholderText("Tìm theo tên, mã SV, SĐT...")
         self.inp_search.setStyleSheet(styles.INPUT)
         self.inp_search.setFixedHeight(40)
         self.inp_search.setMinimumWidth(240)
         self.inp_search.textChanged.connect(self._load)
-
         self.cmb_fac = QComboBox()
         self.cmb_fac.setStyleSheet(styles.COMBO)
         self.cmb_fac.setFixedHeight(40)
         self.cmb_fac.addItem("Tất cả khoa")
         self.cmb_fac.currentTextChanged.connect(self._load)
-
         self.lbl_count = QLabel()
         self.lbl_count.setStyleSheet(f"color: {styles.TEXT_MUTED};")
-
         tb.addWidget(self.btn_add); tb.addWidget(self.btn_ref)
         tb.addStretch()
         tb.addWidget(self.inp_search); tb.addWidget(self.cmb_fac)
         lay.addLayout(tb)
 
-        # Table
         self.table = QTableWidget()
         self.table.setColumnCount(len(self.COLS))
         self.table.setHorizontalHeaderLabels(self.COLS)
@@ -304,7 +290,7 @@ class StudentWindow(QWidget):
                 item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
                 self.table.setItem(i, col, item)
 
-            # Badge trang thai
+            # Cot 7: Badge trang thai
             if valid:
                 bg, fg     = styles.SUCCESS_BG, "#166534"
                 badge_text = f"Hợp lệ  |  {borrowing} cuốn mượn"
@@ -316,9 +302,9 @@ class StudentWindow(QWidget):
             bl_s.setContentsMargins(6, 4, 6, 4)
             badge = styles.make_badge(badge_text, bg, fg, 180)
             bl_s.addWidget(badge)
-            self.table.setCellWidget(i, 6, bw_s)
+            self.table.setCellWidget(i, 7, bw_s)
 
-            # Nut thao tac
+            # Cot 8: Nut thao tac
             bw = QWidget(); bl = QHBoxLayout(bw)
             bl.setContentsMargins(6, 4, 6, 4); bl.setSpacing(8)
             be = QPushButton("Sửa")
@@ -330,7 +316,7 @@ class StudentWindow(QWidget):
             bd.setFixedHeight(30); bd.setFixedWidth(60)
             bd.clicked.connect(lambda _, x=sid: self._delete(x))
             bl.addWidget(be); bl.addWidget(bd)
-            self.table.setCellWidget(i, 7, bw)
+            self.table.setCellWidget(i, 8, bw)
             self.table.setRowHeight(i, 50)
 
         self.lbl_count.setText(f"Tổng: {len(students)} độc giả")

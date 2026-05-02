@@ -102,7 +102,6 @@ class DashboardScreen(QWidget):
         container = QWidget()
         lay = QVBoxLayout(container); lay.setContentsMargins(24,20,24,20); lay.setSpacing(14)
 
-        # Stat cards
         stats_row = QHBoxLayout(); stats_row.setSpacing(12)
         self.card_books    = StatCard("Tổng số sách", "...", "📚", "#E6F1FB", "Đang cập nhật...", styles.TEXT_MUTED)
         self.card_students = StatCard("Sinh viên",    "...", "👤", "#EAF3DE", "Đang cập nhật...", styles.TEXT_MUTED)
@@ -112,7 +111,6 @@ class DashboardScreen(QWidget):
             stats_row.addWidget(c)
         lay.addLayout(stats_row)
 
-        # Row 2: overdue + bieu do
         row2 = QHBoxLayout(); row2.setSpacing(12)
         self.panel_overdue = Panel("Sách quá hạn & mất sách")
         self.panel_overdue.setMinimumHeight(200)
@@ -122,7 +120,6 @@ class DashboardScreen(QWidget):
         row2.addWidget(self.panel_chart, 2)
         lay.addLayout(row2)
 
-        # Row 3: hoat dong + top sach
         row3 = QHBoxLayout(); row3.setSpacing(12)
         self.panel_act = Panel("Hoạt động gần đây")
         self.panel_top = Panel("Top sách mượn nhiều")
@@ -138,13 +135,21 @@ class DashboardScreen(QWidget):
         lay = panel.layout()
         while lay.count() > keep:
             item = lay.takeAt(keep)
-            if item.widget():
-                item.widget().setParent(None); item.widget().deleteLater()
-            elif item.layout():
-                while item.layout().count():
-                    c = item.layout().takeAt(0)
-                    if c.widget():
-                        c.widget().setParent(None); c.widget().deleteLater()
+            if item is None:
+                break
+            w = item.widget()
+            if w is not None:
+                w.setParent(None)
+                w.deleteLater()
+            elif item.layout() is not None:
+                sub = item.layout()
+                while sub.count():
+                    c = sub.takeAt(0)
+                    if c is not None:
+                        cw = c.widget()
+                        if cw is not None:
+                            cw.setParent(None)
+                            cw.deleteLater()
 
     def _make_divider(self):
         div = QFrame(); div.setFrameShape(QFrame.HLine)
@@ -169,12 +174,11 @@ class DashboardScreen(QWidget):
             self.card_borrow.set_value(borrowing)
             self.card_overdue.set_value(overdue + lost)
 
-            # Panel qua han
             self._clear_panel(self.panel_overdue)
             lay = self.panel_overdue.layout()
             from core.services.fine_service import get_overdue_list
-            from core.utils.helpers import format_currency
             overdues = get_overdue_list()
+            def fmt(v): return f"{int(v):,}d".replace(",", ".") if v else "—"
             if not overdues:
                 lbl = QLabel("Không có sách quá hạn hoặc mất")
                 lbl.setStyleSheet(f"color:{styles.TEXT_MUTED}; border:none;")
@@ -189,39 +193,32 @@ class DashboardScreen(QWidget):
                     sub_txt = (f"{od.get('Title','')} — Mất sách" if is_lost
                                else f"{od.get('Title','')} — Quá {days} ngày")
 
-                    # Avatar dung AvatarLabel de khong bi cắt
                     av = AvatarLabel(name[:2], av_bg, av_fg, 36, 8)
 
-                    # Ten
                     ln = QLabel(name)
-                    ln.setStyleSheet(
-                        f"color:{styles.TEXT_DARK}; font-weight:600; font-size:13px; border:none;")
-                    # Sub
+                    ln.setStyleSheet(f"color:{styles.TEXT_DARK}; font-weight:600; font-size:13px; border:none;")
                     lb = QLabel(sub_txt)
-                    lb.setStyleSheet(
-                        f"color:{styles.TEXT_MUTED}; font-size:12px; border:none;")
+                    lb.setStyleSheet(f"color:{styles.TEXT_MUTED}; font-size:12px; border:none;")
                     lb.setWordWrap(True)
 
-                    # Pill
                     pill = make_pill(
                         "Mất sách" if is_lost else "Quá hạn",
                         "#FCEBEB" if is_lost else "#FAEEDA",
                         "#A32D2D" if is_lost else "#633806")
 
-                    # Tien phat
-                    fl = QLabel(format_currency(od.get("FineAmount", 0)))
-                    fl.setStyleSheet(
-                        f"color:#A32D2D; font-weight:600; font-size:13px; border:none;")
+                    fl = QLabel(fmt(od.get("FineAmount", 0)))
+                    fl.setStyleSheet(f"color:#A32D2D; font-weight:600; font-size:13px; border:none;")
                     fl.setFixedWidth(80)
                     fl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-                    # Layout: [av] [ten+sub, stretch] [pill] [fine]
                     row_w = QWidget()
+                    row_w.setStyleSheet("background: transparent;")
                     row_l = QHBoxLayout(row_w)
                     row_l.setContentsMargins(4, 6, 4, 6)
                     row_l.setSpacing(10)
 
                     info_w = QWidget()
+                    info_w.setStyleSheet("background: transparent;")
                     info_l = QVBoxLayout(info_w)
                     info_l.setContentsMargins(0, 0, 0, 0)
                     info_l.setSpacing(2)
@@ -236,7 +233,6 @@ class DashboardScreen(QWidget):
                     if od != overdues[:6][-1]:
                         lay.addWidget(self._make_divider())
 
-            # Panel bieu do the loai
             self._clear_panel(self.panel_chart)
             lay2 = self.panel_chart.layout()
             from database.db import get_connection
@@ -252,7 +248,9 @@ class DashboardScreen(QWidget):
             else:
                 max_cnt = max(r[1] for r in chart_rows) or 1
                 for cat, cnt in chart_rows:
-                    rw = QWidget(); rl = QHBoxLayout(rw)
+                    rw = QWidget()
+                    rw.setStyleSheet("background: transparent;")
+                    rl = QHBoxLayout(rw)
                     rl.setContentsMargins(0,2,0,2); rl.setSpacing(8)
                     lbl_cat = QLabel(cat or "Khác")
                     lbl_cat.setFixedWidth(90)
@@ -268,7 +266,6 @@ class DashboardScreen(QWidget):
                     rl.addWidget(lbl_cat); rl.addWidget(track,1); rl.addWidget(lbl_cnt)
                     lay2.addWidget(rw)
 
-            # Panel hoat dong - lay tu AuditLog
             self._clear_panel(self.panel_act)
             lay3 = self.panel_act.layout()
             conn2 = get_connection(); cur2 = conn2.cursor()
@@ -293,7 +290,9 @@ class DashboardScreen(QWidget):
                 "Giải quyết mất sách": "#3B6D11",
             }
             if not act_rows:
-                lay3.addWidget(QLabel("Chưa có hoạt động nào"))
+                lbl = QLabel("Chưa có hoạt động nào")
+                lbl.setStyleSheet(f"color:{styles.TEXT_MUTED}; border:none;")
+                lay3.addWidget(lbl)
             else:
                 for row in act_rows:
                     action     = row["Action"] or ""
@@ -304,11 +303,12 @@ class DashboardScreen(QWidget):
                     try: ts_disp = ts[11:16]
                     except: ts_disp = ""
                     dot_color = DOT_COLORS.get(action, styles.PRIMARY)
-                    # Voi Mất sách, hien ten sach thay vi BorrowID
                     if book_title:
                         target = book_title
 
-                    rw = QWidget(); rl = QHBoxLayout(rw)
+                    rw = QWidget()
+                    rw.setStyleSheet("background: transparent;")
+                    rl = QHBoxLayout(rw)
                     rl.setContentsMargins(0,4,0,4); rl.setSpacing(10)
 
                     dot = QLabel("●"); dot.setFixedWidth(14)
@@ -319,7 +319,9 @@ class DashboardScreen(QWidget):
                     sub_lbl = QLabel(staff)
                     sub_lbl.setStyleSheet(f"color:{styles.TEXT_MUTED}; font-size:12px; border:none;")
 
-                    info_w = QWidget(); info_l = QVBoxLayout(info_w)
+                    info_w = QWidget()
+                    info_w.setStyleSheet("background: transparent;")
+                    info_l = QVBoxLayout(info_w)
                     info_l.setContentsMargins(0,0,0,0); info_l.setSpacing(1)
                     info_l.addWidget(text_lbl); info_l.addWidget(sub_lbl)
 
@@ -332,7 +334,6 @@ class DashboardScreen(QWidget):
                     if row != act_rows[-1]:
                         lay3.addWidget(self._make_divider())
 
-            # Panel top sach
             self._clear_panel(self.panel_top)
             lay4 = self.panel_top.layout()
             conn3 = get_connection(); cur3 = conn3.cursor()
@@ -345,7 +346,9 @@ class DashboardScreen(QWidget):
             RANK_BG = ["#E6F1FB","#E6F1FB","#EAF3DE","#EAF3DE","#EAF3DE"]
             RANK_FG = ["#0C447C","#0C447C","#27500A","#27500A","#27500A"]
             for idx, (title, cnt) in enumerate(top_rows):
-                rw = QWidget(); rl = QHBoxLayout(rw)
+                rw = QWidget()
+                rw.setStyleSheet("background: transparent;")
+                rl = QHBoxLayout(rw)
                 rl.setContentsMargins(0,5,0,5); rl.setSpacing(10)
                 rank = QLabel(str(idx+1)); rank.setFixedSize(28,28); rank.setAlignment(Qt.AlignCenter)
                 rank.setStyleSheet(
@@ -362,6 +365,7 @@ class DashboardScreen(QWidget):
                     lay4.addWidget(self._make_divider())
 
         except Exception as e:
+            import traceback; traceback.print_exc()
             print(f"[Dashboard] {e}")
 
 
@@ -387,12 +391,14 @@ def sidebar_section(text):
 
 class DashboardWindow(QWidget):
     PAGE_TITLES = {
-        "dashboard": "Dashboard",
-        "books":     "Quản lý Sách",
-        "students":  "Quản lý Độc giả",
-        "borrow":    "Mượn / Trả Sách",
-        "reports":   "Báo cáo & Thống kê",
-        "staff":     "Quản lý Nhân viên",
+        "dashboard":     "Dashboard",
+        "books":         "Quản lý Sach",
+        "students":      "Quản lý Độc giả",
+        "borrow":        "Mượn / Trả Sach",
+        "reports":       "Báo cáo & Thong ke",
+        "staff":         "Quản lý Nhân viên",
+        "announcements": "Thông báo & Tiện ích",
+        "messages":      "Tin nhắn",
     }
 
     def __init__(self, current_user=None, parent=None):
@@ -407,7 +413,6 @@ class DashboardWindow(QWidget):
     def _build_ui(self):
         root = QHBoxLayout(self); root.setContentsMargins(0,0,0,0); root.setSpacing(0)
 
-        # SIDEBAR
         sidebar = QWidget(); sidebar.setObjectName("Sidebar")
         sidebar.setStyleSheet(styles.SIDEBAR_BG); sidebar.setFixedWidth(220)
         sb = QVBoxLayout(sidebar); sb.setContentsMargins(0,0,0,0); sb.setSpacing(0)
@@ -427,8 +432,10 @@ class DashboardWindow(QWidget):
         nl = QVBoxLayout(nav_area); nl.setContentsMargins(0,8,0,8); nl.setSpacing(0)
         pages = [
             ("Tổng quan", [("dashboard","  Dashboard")]),
-            ("Quản lý",   [("books","  Quản lý Sách"),("students","  Độc giả"),("borrow","  Mượn / Trả")]),
+            ("Quản lý",   [("books","  Quản lý Sach"),("students","  Độc giả"),("borrow","  Mượn / Trả")]),
             ("Hệ thống",  [("reports","  Báo cáo"),("staff","  Nhân viên")]),
+            ("Tiện ích",  [("announcements","  Thông báo & Tiện ích"),
+                           ("messages","  Tin nhắn")]),
         ]
         for sec, items in pages:
             nl.addWidget(sidebar_section(sec))
@@ -464,7 +471,6 @@ class DashboardWindow(QWidget):
         fl.addWidget(btn_lo); sb.addWidget(footer)
         root.addWidget(sidebar)
 
-        # MAIN
         main_area = QWidget(); main_area.setObjectName("Content")
         main_area.setStyleSheet(styles.CONTENT_BG)
         ml = QVBoxLayout(main_area); ml.setContentsMargins(0,0,0,0); ml.setSpacing(0)
@@ -493,19 +499,23 @@ class DashboardWindow(QWidget):
         self.stack = QStackedWidget()
         self.stack.setStyleSheet("background:transparent;")
 
-        from admin_app.gui.book_gui    import BookWindow
-        from admin_app.gui.student_gui import StudentWindow
-        from admin_app.gui.borrow_gui  import BorrowWindow
-        from admin_app.gui.reports_gui import ReportsWindow
-        from admin_app.gui.staff_gui   import StaffWindow
+        from admin_app.gui.book_gui         import BookWindow
+        from admin_app.gui.student_gui      import StudentWindow
+        from admin_app.gui.borrow_gui       import BorrowWindow
+        from admin_app.gui.reports_gui      import ReportsWindow
+        from admin_app.gui.staff_gui        import StaffWindow
+        from admin_app.gui.announcement_gui import AnnouncementWindow
+        from admin_app.gui.message_gui      import MessageWindow
 
         self.screens = {
-            "dashboard": DashboardScreen(),
-            "books":     BookWindow(current_user=self.current_user),
-            "students":  StudentWindow(),
-            "borrow":    BorrowWindow(current_user=self.current_user),
-            "reports":   ReportsWindow(),
-            "staff":     StaffWindow(current_user=self.current_user),
+            "dashboard":     DashboardScreen(),
+            "books":         BookWindow(current_user=self.current_user),
+            "students":      StudentWindow(),
+            "borrow":        BorrowWindow(current_user=self.current_user),
+            "reports":       ReportsWindow(),
+            "staff":         StaffWindow(current_user=self.current_user),
+            "announcements": AnnouncementWindow(current_user=self.current_user),
+            "messages":      MessageWindow(current_user=self.current_user),
         }
         for screen in self.screens.values():
             self.stack.addWidget(screen)
@@ -537,6 +547,12 @@ class DashboardWindow(QWidget):
             except: pass
         elif key == "borrow":
             try: self.screens["borrow"].refresh_table()
+            except: pass
+        elif key == "announcements":
+            try: self.screens["announcements"].refresh()
+            except: pass
+        elif key == "messages":
+            try: self.screens["messages"].refresh()
             except: pass
         elif key in ("books","students","reports","staff"):
             if hasattr(self.screens.get(key), "refresh"):
