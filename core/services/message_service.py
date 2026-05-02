@@ -90,7 +90,9 @@ def get_unread_count(staff_id):
         SELECT COUNT(*) FROM Messages
         WHERE ReceiverType='staff' AND IsRead=0
     """)
-    return cur.fetchone()[0]
+    count = cur.fetchone()[0]
+    conn.close()
+    return count
 
 
 def get_student_unread_count(student_id):

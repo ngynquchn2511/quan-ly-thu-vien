@@ -574,12 +574,8 @@ class DashboardWindow(QWidget):
             QPushButton:hover { background:#EBF1FD; color:#5B8DEF; }
         """)
         if msg.exec_() == QMessageBox.Yes:
-            try:
-                from shared.login_gui import UnifiedLoginWindow
-                self.login = UnifiedLoginWindow(); self.login.show(); self.close()
-            except:
-                from admin_app.gui.login_gui import LoginWindow
-                self.login = LoginWindow(); self.login.show(); self.close()
+            from shared.login_gui import LoginWindow
+            self.login = LoginWindow(); self.login.show(); self.close()
 
     def _center(self):
         from PyQt5.QtWidgets import QDesktopWidget

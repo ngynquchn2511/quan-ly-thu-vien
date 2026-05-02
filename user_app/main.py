@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from PyQt5.QtWidgets import QApplication
 from database.db import init_database
-from user_app.gui.login_gui import LoginWindow
+from shared.login_gui import LoginWindow
 
 def main():
     init_database()

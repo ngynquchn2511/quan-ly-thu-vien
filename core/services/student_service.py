@@ -5,11 +5,14 @@ from database.db import get_connection
 from database.models import Student
 import hashlib
 
-def get_all_students(keyword="", faculty=""):
+def get_all_students(keyword="", faculty="", reader_type=""):
     conn = get_connection()
     cur  = conn.cursor()
     sql  = "SELECT * FROM Students WHERE 1=1"
     p    = []
+    if reader_type:
+        sql += " AND ReaderType=?"
+        p.append(reader_type)
     if keyword:
         sql += " AND (Name LIKE ? OR StudentID LIKE ? OR Phone LIKE ?)"
         p   += [f"%{keyword}%"] * 3
@@ -25,11 +28,11 @@ def add_student(student: Student):
     pw_hash = hashlib.sha256(student.password.encode()).hexdigest() if student.password else None
     conn = get_connection()
     conn.execute("""
-        INSERT INTO Students (StudentID,Name,Faculty,Class,Phone,Email,CardExpire,PasswordHash)
-        VALUES (?,?,?,?,?,?,?,?)
+        INSERT INTO Students (StudentID,Name,Faculty,Class,Phone,Email,CardExpire,PasswordHash,ReaderType)
+        VALUES (?,?,?,?,?,?,?,?,?)
     """, (student.student_id, student.name, student.faculty,
           student.class_, student.phone, student.email, student.card_expire,
-          pw_hash))
+          pw_hash, student.reader_type))
     conn.commit()
     conn.close()
 
@@ -39,18 +42,18 @@ def update_student(student: Student):
     if student.password:
         pw_hash = hashlib.sha256(student.password.encode()).hexdigest()
         conn.execute("""
-            UPDATE Students SET Name=?,Faculty=?,Class=?,Phone=?,Email=?,CardExpire=?,PasswordHash=?
+            UPDATE Students SET Name=?,Faculty=?,Class=?,Phone=?,Email=?,CardExpire=?,PasswordHash=?,ReaderType=?
             WHERE StudentID=?
         """, (student.name, student.faculty, student.class_,
               student.phone, student.email, student.card_expire, 
-              pw_hash, student.student_id))
+              pw_hash, student.reader_type, student.student_id))
     else:
         conn.execute("""
-            UPDATE Students SET Name=?,Faculty=?,Class=?,Phone=?,Email=?,CardExpire=?
+            UPDATE Students SET Name=?,Faculty=?,Class=?,Phone=?,Email=?,CardExpire=?,ReaderType=?
             WHERE StudentID=?
         """, (student.name, student.faculty, student.class_,
               student.phone, student.email, student.card_expire,
-              student.student_id))
+              student.reader_type, student.student_id))
     conn.commit()
     conn.close()
 
@@ -68,10 +71,13 @@ def get_student_by_id(student_id: str):
     conn.close()
     return dict(row) if row else None
 
-def get_faculties():
+def get_faculties(reader_type=""):
     conn = get_connection()
     cur  = conn.cursor()
-    cur.execute("SELECT DISTINCT Faculty FROM Students WHERE Faculty IS NOT NULL")
+    if reader_type:
+        cur.execute("SELECT DISTINCT Faculty FROM Students WHERE Faculty IS NOT NULL AND ReaderType=?", (reader_type,))
+    else:
+        cur.execute("SELECT DISTINCT Faculty FROM Students WHERE Faculty IS NOT NULL")
     rows = cur.fetchall()
     conn.close()
     return [r[0] for r in rows]

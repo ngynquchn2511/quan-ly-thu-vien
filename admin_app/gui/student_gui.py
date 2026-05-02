@@ -3,7 +3,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QFrame, QTableWidget, QTableWidgetItem,
+    QPushButton, QTableWidget, QTableWidgetItem,
     QHeaderView, QComboBox, QDialog, QMessageBox, QAbstractItemView, QDateEdit
 )
 from PyQt5.QtCore import Qt, QDate
@@ -18,13 +18,18 @@ import core.styles as styles
 
 
 class StudentDialog(QDialog):
-    def __init__(self, parent=None, student_data=None):
+    def __init__(self, parent=None, student_data=None, reader_type="student"):
         super().__init__(parent)
         self.student_data = student_data
+        self.reader_type = reader_type or "student"
         self.setWindowTitle("Thêm độc giả" if not student_data else "Chỉnh sửa thông tin")
-        self.setFixedSize(640, 620)
+        self.setFixedSize(640, 660)
         self.setStyleSheet(f"QDialog {{ background: {styles.WHITE}; }}")
         self._build()
+
+    def _reader_label(self, t=None):
+        value = t or self.reader_type
+        return "Giảng viên" if value == "lecturer" else "Sinh viên"
 
     def _build(self):
         lay = QVBoxLayout(self)
@@ -38,14 +43,26 @@ class StudentDialog(QDialog):
 
         def lbl(t): return styles.field_label(t)
 
+        lay.addWidget(lbl("Loại độc giả *"))
+        self.cmb_type = QComboBox()
+        self.cmb_type.setFixedHeight(42)
+        self.cmb_type.setStyleSheet(styles.COMBO)
+        self.cmb_type.addItem("Sinh viên", "student")
+        self.cmb_type.addItem("Giảng viên", "lecturer")
+        idx = self.cmb_type.findData(self.reader_type)
+        self.cmb_type.setCurrentIndex(max(0, idx))
+        self.cmb_type.currentIndexChanged.connect(self._update_type_ui)
+        lay.addWidget(self.cmb_type)
+
         r1 = QHBoxLayout(); r1.setSpacing(16)
         c1 = QVBoxLayout(); c1.setSpacing(6)
-        c1.addWidget(lbl("Mã sinh viên *"))
+        self.lbl_id = lbl("Mã *")
+        c1.addWidget(self.lbl_id)
         self.inp_id = QLineEdit()
-        self.inp_id.setPlaceholderText("SV2024001...")
         self.inp_id.setFixedHeight(42)
         self.inp_id.setStyleSheet(styles.INPUT)
         c1.addWidget(self.inp_id)
+
         c2 = QVBoxLayout(); c2.setSpacing(6)
         c2.addWidget(lbl("Họ tên *"))
         self.inp_name = QLineEdit()
@@ -64,10 +81,11 @@ class StudentDialog(QDialog):
         self.inp_fac.setStyleSheet(styles.COMBO)
         self.inp_fac.addItems(["CNTT", "Kinh tế", "Cơ điện", "Ngoại ngữ", "Khoa học", "Khác"])
         c3.addWidget(self.inp_fac)
+
         c4 = QVBoxLayout(); c4.setSpacing(6)
-        c4.addWidget(lbl("Lớp"))
+        self.lbl_class = lbl("Lớp")
+        c4.addWidget(self.lbl_class)
         self.inp_class = QLineEdit()
-        self.inp_class.setPlaceholderText("IT21A...")
         self.inp_class.setFixedHeight(42)
         self.inp_class.setStyleSheet(styles.INPUT)
         c4.addWidget(self.inp_class)
@@ -82,10 +100,11 @@ class StudentDialog(QDialog):
         self.inp_phone.setFixedHeight(42)
         self.inp_phone.setStyleSheet(styles.INPUT)
         c5.addWidget(self.inp_phone)
+
         c6 = QVBoxLayout(); c6.setSpacing(6)
         c6.addWidget(lbl("Email"))
         self.inp_email = QLineEdit()
-        self.inp_email.setPlaceholderText("sv@email.com...")
+        self.inp_email.setPlaceholderText("email@example.com...")
         self.inp_email.setFixedHeight(42)
         self.inp_email.setStyleSheet(styles.INPUT)
         c6.addWidget(self.inp_email)
@@ -101,13 +120,12 @@ class StudentDialog(QDialog):
         self.inp_expire.setDisplayFormat("dd/MM/yyyy")
         lay.addWidget(self.inp_expire)
 
-        # Row 4: Mật khẩu (tài khoản đăng nhập = Mã SV)
         r4 = QHBoxLayout(); r4.setSpacing(16)
         c7 = QVBoxLayout(); c7.setSpacing(6)
         c7.addWidget(lbl("Mật khẩu" + ("" if self.student_data else " *")))
-        note = QLabel("Tài khoản đăng nhập = Mã sinh viên")
-        note.setStyleSheet(f"color: {styles.TEXT_MUTED}; font-size: 10px; font-style: italic;")
-        c7.addWidget(note)
+        self.note = QLabel()
+        self.note.setStyleSheet(f"color: {styles.TEXT_MUTED}; font-size: 10px; font-style: italic;")
+        c7.addWidget(self.note)
         self.inp_pass = QLineEdit()
         self.inp_pass.setPlaceholderText("Để trống nếu không đổi..." if self.student_data else "Nhập mật khẩu...")
         self.inp_pass.setEchoMode(QLineEdit.Password)
@@ -118,20 +136,25 @@ class StudentDialog(QDialog):
         lay.addLayout(r4)
 
         if self.student_data:
+            current_type = self.student_data.get("ReaderType", self.reader_type or "student")
+            idx = self.cmb_type.findData(current_type)
+            self.cmb_type.setCurrentIndex(max(0, idx))
             self.inp_id.setText(self.student_data.get("StudentID", ""))
             self.inp_id.setEnabled(False)
             self.inp_name.setText(self.student_data.get("Name", ""))
             idx = self.inp_fac.findText(self.student_data.get("Faculty", ""))
-            if idx >= 0: self.inp_fac.setCurrentIndex(idx)
+            if idx >= 0:
+                self.inp_fac.setCurrentIndex(idx)
             self.inp_class.setText(self.student_data.get("Class", "") or "")
             self.inp_phone.setText(self.student_data.get("Phone", "") or "")
             self.inp_email.setText(self.student_data.get("Email", "") or "")
             exp = self.student_data.get("CardExpire", "")
             if exp:
                 d = QDate.fromString(exp, "yyyy-MM-dd")
-                if d.isValid(): self.inp_expire.setDate(d)
+                if d.isValid():
+                    self.inp_expire.setDate(d)
 
-
+        self._update_type_ui()
         lay.addStretch()
 
         br = QHBoxLayout(); br.setSpacing(10); br.addStretch()
@@ -146,40 +169,69 @@ class StudentDialog(QDialog):
         br.addWidget(bc); br.addWidget(bs)
         lay.addLayout(br)
 
+    def _update_type_ui(self):
+        self.reader_type = self.cmb_type.currentData() or "student"
+        if self.reader_type == "lecturer":
+            self.lbl_id.setText("Mã giảng viên *")
+            self.inp_id.setPlaceholderText("GV001...")
+            self.lbl_class.setText("Lớp")
+            self.inp_class.setPlaceholderText("Không bắt buộc")
+            self.note.setText("Tài khoản đăng nhập = Mã giảng viên")
+        else:
+            self.lbl_id.setText("Mã sinh viên *")
+            self.inp_id.setPlaceholderText("SV2024001...")
+            self.lbl_class.setText("Lớp")
+            self.inp_class.setPlaceholderText("IT21A...")
+            self.note.setText("Tài khoản đăng nhập = Mã sinh viên")
+
     def _save(self):
         sid  = self.inp_id.text().strip()
         name = self.inp_name.text().strip()
-        if not sid:  QMessageBox.warning(self, "Lỗi", "Vui lòng nhập mã sinh viên."); return
-        if not name: QMessageBox.warning(self, "Lỗi", "Vui lòng nhập họ tên."); return
-        # Logic tai khoan (tài khoản = mã sinh viên)
+        if not sid:
+            QMessageBox.warning(self, "Lỗi", "Vui lòng nhập mã độc giả.")
+            return
+        if not name:
+            QMessageBox.warning(self, "Lỗi", "Vui lòng nhập họ tên.")
+            return
+
         pass_val = self.inp_pass.text()
         if not self.student_data and not pass_val:
-            QMessageBox.warning(self, "Lỗi", "Vui lòng nhập mật khẩu cho tài khoản mới."); return
+            QMessageBox.warning(self, "Lỗi", "Vui lòng nhập mật khẩu cho tài khoản mới.")
+            return
+
         s = Student(
-            student_id=sid, name=name,
+            student_id=sid,
+            name=name,
             faculty=self.inp_fac.currentText(),
-            class_=self.inp_class.text().strip(),
+            class_=(self.inp_class.text().strip() if self.reader_type != "lecturer" else ""),
             phone=self.inp_phone.text().strip(),
             email=self.inp_email.text().strip(),
             card_expire=self.inp_expire.date().toString("yyyy-MM-dd"),
-            password=pass_val
+            password=pass_val,
+            reader_type=self.reader_type
         )
         try:
-            if self.student_data: update_student(s)
-            else: add_student(s)
+            if self.student_data:
+                update_student(s)
+            else:
+                add_student(s)
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Lỗi", f"Không thể lưu: {e}")
 
 
 class StudentWindow(QWidget):
-    COLS = ["Mã SV", "Họ tên", "Khoa", "Lớp",
+    COLS = ["Mã", "Họ tên", "Loại", "Khoa", "Lớp",
             "Số ĐT", "Hạn thẻ", "Trạng thái thẻ", "Thao tác"]
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, reader_type=""):
         super().__init__(parent)
+        self.reader_type = reader_type
         self._build()
         self.refresh()
+
+    def _reader_label(self, value):
+        return "Giảng viên" if value == "lecturer" else "Sinh viên"
 
     def _build(self):
         lay = QVBoxLayout(self)
@@ -195,22 +247,37 @@ class StudentWindow(QWidget):
         self.btn_ref.setStyleSheet(styles.BTN_OUTLINE)
         self.btn_ref.setFixedHeight(40)
         self.btn_ref.clicked.connect(self.refresh)
+
         self.inp_search = QLineEdit()
-        self.inp_search.setPlaceholderText("Tìm theo tên, mã SV, SĐT...")
+        self.inp_search.setPlaceholderText("Tìm theo tên, mã độc giả, SĐT...")
         self.inp_search.setStyleSheet(styles.INPUT)
         self.inp_search.setFixedHeight(40)
         self.inp_search.setMinimumWidth(240)
         self.inp_search.textChanged.connect(self._load)
+
+        self.cmb_type = QComboBox()
+        self.cmb_type.setStyleSheet(styles.COMBO)
+        self.cmb_type.setFixedHeight(40)
+        self.cmb_type.addItem("Tất cả loại", "")
+        self.cmb_type.addItem("Sinh viên", "student")
+        self.cmb_type.addItem("Giảng viên", "lecturer")
+        self.cmb_type.currentTextChanged.connect(self.refresh)
+
         self.cmb_fac = QComboBox()
         self.cmb_fac.setStyleSheet(styles.COMBO)
         self.cmb_fac.setFixedHeight(40)
         self.cmb_fac.addItem("Tất cả khoa")
         self.cmb_fac.currentTextChanged.connect(self._load)
+
         self.lbl_count = QLabel()
         self.lbl_count.setStyleSheet(f"color: {styles.TEXT_MUTED};")
-        tb.addWidget(self.btn_add); tb.addWidget(self.btn_ref)
+
+        tb.addWidget(self.btn_add)
+        tb.addWidget(self.btn_ref)
         tb.addStretch()
-        tb.addWidget(self.inp_search); tb.addWidget(self.cmb_fac)
+        tb.addWidget(self.inp_search)
+        tb.addWidget(self.cmb_type)
+        tb.addWidget(self.cmb_fac)
         lay.addLayout(tb)
 
         self.table = QTableWidget()
@@ -226,32 +293,35 @@ class StudentWindow(QWidget):
 
         hdr = self.table.horizontalHeader()
         hdr.setSectionResizeMode(0, QHeaderView.Fixed)
-        self.table.setColumnWidth(0, 110)   # Ma SV
-        hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents) # Ho ten
+        self.table.setColumnWidth(0, 110)
+        hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         hdr.setSectionResizeMode(2, QHeaderView.Fixed)
-        self.table.setColumnWidth(2, 100)   # Khoa
+        self.table.setColumnWidth(2, 100)
         hdr.setSectionResizeMode(3, QHeaderView.Fixed)
-        self.table.setColumnWidth(3, 90)    # Lop
+        self.table.setColumnWidth(3, 100)
         hdr.setSectionResizeMode(4, QHeaderView.Fixed)
-        self.table.setColumnWidth(4, 120)   # So DT
+        self.table.setColumnWidth(4, 90)
         hdr.setSectionResizeMode(5, QHeaderView.Fixed)
-        self.table.setColumnWidth(5, 110)   # Han the
+        self.table.setColumnWidth(5, 120)
         hdr.setSectionResizeMode(6, QHeaderView.Fixed)
-        self.table.setColumnWidth(6, 200)   # Trang thai
+        self.table.setColumnWidth(6, 110)
         hdr.setSectionResizeMode(7, QHeaderView.Fixed)
-        self.table.setColumnWidth(7, 140)   # Thao tac
+        self.table.setColumnWidth(7, 200)
+        hdr.setSectionResizeMode(8, QHeaderView.Fixed)
+        self.table.setColumnWidth(8, 180)
 
         lay.addWidget(self.table)
         lay.addWidget(self.lbl_count)
 
     def refresh(self):
-        cur = self.cmb_fac.currentText()
+        cur_fac = self.cmb_fac.currentText()
         self.cmb_fac.blockSignals(True)
         self.cmb_fac.clear()
         self.cmb_fac.addItem("Tất cả khoa")
-        for f in get_faculties():
+        reader_type = self.cmb_type.currentData() or ""
+        for f in get_faculties(reader_type):
             self.cmb_fac.addItem(f)
-        idx = self.cmb_fac.findText(cur)
+        idx = self.cmb_fac.findText(cur_fac)
         self.cmb_fac.setCurrentIndex(max(0, idx))
         self.cmb_fac.blockSignals(False)
         self._load()
@@ -259,8 +329,10 @@ class StudentWindow(QWidget):
     def _load(self):
         kw  = self.inp_search.text().strip()
         fac = self.cmb_fac.currentText()
-        if fac == "Tất cả khoa": fac = ""
-        students = get_all_students(kw, fac)
+        if fac == "Tất cả khoa":
+            fac = ""
+        reader_type = self.cmb_type.currentData() or ""
+        students = get_all_students(kw, fac, reader_type)
         self.table.setRowCount(0)
         today = datetime.now().strftime("%Y-%m-%d")
 
@@ -269,6 +341,7 @@ class StudentWindow(QWidget):
             sid    = s.get("StudentID", "")
             expire = s.get("CardExpire", "") or ""
             valid  = expire >= today if expire else False
+            s_type = s.get("ReaderType", "student") or "student"
 
             conn = get_connection(); cur = conn.cursor()
             cur.execute(
@@ -282,15 +355,20 @@ class StudentWindow(QWidget):
             except:
                 exp_disp = expire
 
-            vals = [sid, s.get("Name",""),
-                    s.get("Faculty",""), s.get("Class","") or "", 
-                    s.get("Phone","") or "", exp_disp]
+            vals = [
+                sid,
+                s.get("Name", ""),
+                self._reader_label(s_type),
+                s.get("Faculty", ""),
+                s.get("Class", "") or "",
+                s.get("Phone", "") or "",
+                exp_disp,
+            ]
             for col, val in enumerate(vals):
                 item = QTableWidgetItem(val)
                 item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
                 self.table.setItem(i, col, item)
 
-            # Cot 7: Badge trang thai
             if valid:
                 bg, fg     = styles.SUCCESS_BG, "#166534"
                 badge_text = f"Hợp lệ  |  {borrowing} cuốn mượn"
@@ -304,7 +382,6 @@ class StudentWindow(QWidget):
             bl_s.addWidget(badge)
             self.table.setCellWidget(i, 7, bw_s)
 
-            # Cot 8: Nut thao tac
             bw = QWidget(); bl = QHBoxLayout(bw)
             bl.setContentsMargins(6, 4, 6, 4); bl.setSpacing(8)
             be = QPushButton("Sửa")
@@ -322,12 +399,13 @@ class StudentWindow(QWidget):
         self.lbl_count.setText(f"Tổng: {len(students)} độc giả")
 
     def _add(self):
-        if StudentDialog(self).exec_() == QDialog.Accepted:
+        default_type = self.cmb_type.currentData() or "student"
+        if StudentDialog(self, reader_type=default_type).exec_() == QDialog.Accepted:
             self.refresh()
 
     def _edit(self, sid):
         data = get_student_by_id(sid)
-        if data and StudentDialog(self, student_data=data).exec_() == QDialog.Accepted:
+        if data and StudentDialog(self, student_data=data, reader_type=data.get("ReaderType", "student")).exec_() == QDialog.Accepted:
             self.refresh()
 
     def _delete(self, sid):
@@ -340,4 +418,4 @@ class StudentWindow(QWidget):
                 delete_student(sid)
                 self.refresh()
             except Exception as e:
-                QMessageBox.critical(self, "Lỗi", str(e))
+                QMessageBox.critical(self, "Lỗi", str(e))

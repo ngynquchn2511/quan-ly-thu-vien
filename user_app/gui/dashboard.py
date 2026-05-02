@@ -557,7 +557,7 @@ class DashboardWindow(QWidget):
             QMessageBox.No
         )
         if reply == QMessageBox.Yes:
-            from user_app.gui.login_gui import LoginWindow
+            from shared.login_gui import LoginWindow
             self.login = LoginWindow()
             self.login.show()
             self.close()

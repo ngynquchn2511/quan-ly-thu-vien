@@ -1,24 +1,22 @@
-"""
-Unified Login Window – tự nhận diện Admin hay Sinh viên.
-Nhập tài khoản/mật khẩu → hệ thống tự kiểm tra Staff trước, rồi Student.
-"""
-import sys, os
+import sys
+import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QFrame, QGraphicsDropShadowEffect, QDesktopWidget
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QLineEdit, QPushButton, QFrame, QGraphicsDropShadowEffect,
+    QDesktopWidget
 )
 from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint
 from PyQt5.QtGui import QFont, QColor, QPainter, QPainterPath
 
+from core.services.staff_service import authenticate
 from core.config import (
     COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_BG,
     COLOR_WHITE, COLOR_TEXT_DARK, COLOR_TEXT_MID,
     COLOR_TEXT_MUTED, COLOR_BORDER, APP_NAME
 )
 
-# ── Styles ────────────────────────────────────────────────────────────────────
 STYLE_WINDOW = f"""
     QWidget#LoginWindow {{
         background: qlineargradient(
@@ -76,7 +74,6 @@ STYLE_ERROR = """
 """
 
 
-# ── Logo widget ───────────────────────────────────────────────────────────────
 class LogoWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -98,13 +95,12 @@ class LogoWidget(QWidget):
             p.drawLine(17, y, 35, y)
 
 
-# ── Unified Login Window ─────────────────────────────────────────────────────
-class UnifiedLoginWindow(QWidget):
+class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setObjectName("LoginWindow")
         self.setWindowTitle(APP_NAME)
-        self.setFixedSize(500, 520)
+        self.setFixedSize(500, 560)
         self.setStyleSheet(STYLE_WINDOW)
         self._build_ui()
         self._center()
@@ -114,7 +110,6 @@ class UnifiedLoginWindow(QWidget):
         outer.setAlignment(Qt.AlignCenter)
         outer.setContentsMargins(36, 36, 36, 36)
 
-        # Card
         self.card = QFrame()
         self.card.setObjectName("LoginCard")
         self.card.setStyleSheet(STYLE_CARD)
@@ -130,14 +125,12 @@ class UnifiedLoginWindow(QWidget):
         lay.setContentsMargins(30, 30, 30, 30)
         lay.setSpacing(0)
 
-        # Logo
         logo_row = QHBoxLayout()
         logo_row.setAlignment(Qt.AlignCenter)
         logo_row.addWidget(LogoWidget())
         lay.addLayout(logo_row)
         lay.addSpacing(12)
 
-        # Title
         t = QLabel(APP_NAME)
         t.setAlignment(Qt.AlignCenter)
         t.setFont(QFont("Segoe UI", 14, QFont.Bold))
@@ -145,7 +138,7 @@ class UnifiedLoginWindow(QWidget):
         lay.addWidget(t)
         lay.addSpacing(3)
 
-        s = QLabel("Hệ thống quản lý thư viện")
+        s = QLabel("Đăng nhập chung cho Admin và Sinh viên")
         s.setAlignment(Qt.AlignCenter)
         s.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 12px;")
         lay.addWidget(s)
@@ -157,17 +150,15 @@ class UnifiedLoginWindow(QWidget):
         lay.addWidget(div)
         lay.addSpacing(20)
 
-        # Username
         lay.addWidget(self._field_label("Tài khoản"))
         lay.addSpacing(5)
         self.inp_user = QLineEdit()
-        self.inp_user.setPlaceholderText("Nhập tên đăng nhập / mã sinh viên")
+        self.inp_user.setPlaceholderText("Nhập tên đăng nhập")
         self.inp_user.setStyleSheet(STYLE_INPUT)
         self.inp_user.setFixedHeight(42)
         lay.addWidget(self.inp_user)
         lay.addSpacing(13)
 
-        # Password
         lay.addWidget(self._field_label("Mật khẩu"))
         lay.addSpacing(5)
         self.inp_pass = QLineEdit()
@@ -176,9 +167,8 @@ class UnifiedLoginWindow(QWidget):
         self.inp_pass.setStyleSheet(STYLE_INPUT)
         self.inp_pass.setFixedHeight(42)
         lay.addWidget(self.inp_pass)
-        lay.addSpacing(5)
+        lay.addSpacing(10)
 
-        # Error label
         self.lbl_err = QLabel()
         self.lbl_err.setStyleSheet(STYLE_ERROR)
         self.lbl_err.setAlignment(Qt.AlignCenter)
@@ -187,7 +177,6 @@ class UnifiedLoginWindow(QWidget):
         lay.addWidget(self.lbl_err)
         lay.addSpacing(16)
 
-        # Button
         self.btn = QPushButton("Đăng nhập")
         self.btn.setStyleSheet(STYLE_BTN)
         self.btn.setFixedHeight(44)
@@ -196,7 +185,6 @@ class UnifiedLoginWindow(QWidget):
 
         outer.addWidget(self.card)
 
-        # Events
         self.btn.clicked.connect(self._login)
         self.inp_pass.returnPressed.connect(self._login)
         self.inp_user.returnPressed.connect(lambda: self.inp_pass.setFocus())
@@ -211,7 +199,6 @@ class UnifiedLoginWindow(QWidget):
         )
         return lbl
 
-    # ── Logic đăng nhập (tự nhận diện) ───────────────────────────────────
     def _login(self):
         username = self.inp_user.text().strip()
         password = self.inp_pass.text()
@@ -225,8 +212,6 @@ class UnifiedLoginWindow(QWidget):
             self.inp_pass.setFocus()
             return
 
-        # 1. Thử đăng nhập Staff (Admin/Nhân viên) trước
-        from core.services.staff_service import authenticate
         user = authenticate(username, password)
         if user:
             from admin_app.gui.dashboard import DashboardWindow
@@ -235,7 +220,6 @@ class UnifiedLoginWindow(QWidget):
             self.close()
             return
 
-        # 2. Thử đăng nhập Student
         from core.services.student_service import authenticate_student
         student = authenticate_student(username, password)
         if student:
@@ -245,7 +229,6 @@ class UnifiedLoginWindow(QWidget):
             self.close()
             return
 
-        # 3. Sai tài khoản
         self._err("Tài khoản hoặc mật khẩu không chính xác.")
         self.inp_pass.clear()
         self.inp_pass.setFocus()
@@ -260,8 +243,7 @@ class UnifiedLoginWindow(QWidget):
         x, y = pos.x(), pos.y()
         self._anim = QPropertyAnimation(self.card, b"pos")
         self._anim.setDuration(280)
-        for t, dx in [(0, 0), (0.15, -8), (0.35, 8),
-                      (0.55, -5), (0.75, 5), (1.0, 0)]:
+        for t, dx in [(0, 0), (0.15, -8), (0.35, 8), (0.55, -5), (0.75, 5), (1.0, 0)]:
             self._anim.setKeyValueAt(t, QPoint(x + dx, y))
         self._anim.setEasingCurve(QEasingCurve.Linear)
         self._anim.start()
@@ -269,6 +251,6 @@ class UnifiedLoginWindow(QWidget):
     def _center(self):
         geo = QDesktopWidget().screenGeometry()
         self.move(
-            (geo.width()  - self.width())  // 2,
+            (geo.width() - self.width()) // 2,
             (geo.height() - self.height()) // 2,
         )

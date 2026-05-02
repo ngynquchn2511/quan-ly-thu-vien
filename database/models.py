@@ -16,7 +16,7 @@ class Book:
 class Student:
     def __init__(self, student_id="", name="", faculty="", class_="",
                  phone="", email="", card_expire="", password="",
-                 password_hash="", card_status="active"):
+                 password_hash="", card_status="active", reader_type="student"):
         self.student_id    = student_id
         self.name          = name
         self.faculty       = faculty
@@ -27,6 +27,7 @@ class Student:
         self.password      = password        # plaintext tạm (dùng khi tạo/đổi mật khẩu)
         self.password_hash = password_hash   # SHA-256 hash lưu trong DB
         self.card_status   = card_status     # 'active' | 'blocked'
+        self.reader_type   = reader_type     # 'student' | 'lecturer'
 
     def is_card_valid(self):
         """Kiểm tra thẻ còn hiệu lực."""

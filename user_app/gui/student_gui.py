@@ -2651,6 +2651,7 @@ class StudentPortalWindow(QWidget):
         self.setWindowTitle(f"Student Portal — {APP_NAME}")
         self.resize(1200, 800)
         self.setMinimumSize(1000, 700)
+        self.setFont(QFont("Segoe UI", 11))
         self._build()
         self._center()
         self.show_page(0)
@@ -2836,12 +2837,8 @@ class StudentPortalWindow(QWidget):
             QMessageBox.No
         )
         if reply == QMessageBox.Yes:
-            try:
-                from shared.login_gui import UnifiedLoginWindow
-                self.login = UnifiedLoginWindow()
-            except:
-                from user_app.gui.login_gui import LoginWindow
-                self.login = LoginWindow()
+            from shared.login_gui import LoginWindow
+            self.login = LoginWindow()
             self.login.show()
             self.close()
 

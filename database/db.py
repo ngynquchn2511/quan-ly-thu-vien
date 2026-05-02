@@ -6,9 +6,11 @@ from core.config import DB_PATH
 
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA busy_timeout = 10000")
     return conn
 
 
@@ -135,6 +137,7 @@ def init_database():
     migrations = [
         ("Students", "PasswordHash", "TEXT"),
         ("Students", "CardStatus",   "TEXT DEFAULT 'active'"),
+        ("Students", "ReaderType",   "TEXT DEFAULT 'student'"),
         ("Books",    "Price",        "REAL DEFAULT 0"),
         ("Borrow",   "LostDate",     "TEXT"),
         ("Borrow",   "RenewCount",   "INTEGER DEFAULT 0"),
@@ -169,6 +172,8 @@ def init_database():
         pw = hashlib.sha256(sid.encode()).hexdigest()
         cur.execute(
             "UPDATE Students SET PasswordHash=? WHERE StudentID=?", (pw, sid))
+
+    cur.execute("UPDATE Students SET ReaderType='student' WHERE ReaderType IS NULL OR ReaderType=''")
 
     conn.commit()
     conn.close()

@@ -71,9 +71,24 @@ def seed():
         sid = s[0]
         cur.execute("""
             INSERT OR IGNORE INTO Students
-            (StudentID,Name,Faculty,Class,Phone,Email,CardExpire,PasswordHash)
-            VALUES (?,?,?,?,?,?,?,?)
-        """, (*s, hash_pw(sid)))  # Mat khau mac dinh = Ma SV
+            (StudentID,Name,Faculty,Class,Phone,Email,CardExpire,PasswordHash,ReaderType)
+            VALUES (?,?,?,?,?,?,?,?,?)
+        """, (*s, hash_pw(sid), "student"))  # Mat khau mac dinh = Ma SV
+
+    # ── Giang vien (mat khau mac dinh = Ma GV) ───────────────────────────────
+    lecturers = [
+        ("GV001","TS. Nguyễn Hoài Nam", "CNTT",     "", "0903001001","gv001@univ.edu.vn","2028-12-31"),
+        ("GV002","ThS. Trần Thu Hương", "Kinh tế",  "", "0903001002","gv002@univ.edu.vn","2027-12-31"),
+        ("GV003","TS. Lê Minh Quân",    "Cơ điện",  "", "0903001003","gv003@univ.edu.vn","2028-06-30"),
+        ("GV004","ThS. Phạm Ngọc Anh",  "Ngoại ngữ", "", "0903001004","gv004@univ.edu.vn","2029-12-31"),
+    ]
+    for l in lecturers:
+        lid = l[0]
+        cur.execute("""
+            INSERT OR IGNORE INTO Students
+            (StudentID,Name,Faculty,Class,Phone,Email,CardExpire,PasswordHash,ReaderType)
+            VALUES (?,?,?,?,?,?,?,?,?)
+        """, (*l, hash_pw(lid), "lecturer"))
 
     # ── Phieu muon mau ────────────────────────────────────────────────────────
     from datetime import datetime, timedelta
@@ -127,6 +142,7 @@ def seed():
     print(f"  Nhân viên : {len(staffs)} tài khoản")
     print(f"  Sách      : {len(books)} quyển")
     print(f"  Sinh viên : {len(students)} người")
+    print(f"  Giảng viên: {len(lecturers)} người")
     print(f"  Phiếu mượn: {len(borrows)} phiếu đang mượn")
     print(f"  Lịch sử   : {len(returned)} phiếu đã trả")
     print()
@@ -137,6 +153,10 @@ def seed():
     print("Tài khoản sinh viên (mật khẩu mặc định = Mã SV):")
     for s in students:
         print(f"  {s[0]} / {s[0]}")
+    print()
+    print("Tài khoản giảng viên (mật khẩu mặc định = Mã GV):")
+    for l in lecturers:
+        print(f"  {l[0]} / {l[0]}")
     print("=" * 55)
 
 
