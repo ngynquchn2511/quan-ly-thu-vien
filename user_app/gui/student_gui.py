@@ -2038,7 +2038,399 @@ class AnnouncementsPage(QWidget):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  8. PROFILE PAGE (Hồ sơ cá nhân)
+#  8. MESSAGES PAGE (Tin nhắn)
+# ══════════════════════════════════════════════════════════════════════════════
+class MessagesPage(QWidget):
+    def __init__(self, portal, parent=None):
+        super().__init__(parent)
+        self.portal = portal
+        self.selected_staff = None
+        self._build()
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self._auto_refresh)
+        self.timer.start(10000)
+
+    def _build(self):
+        main = QHBoxLayout(self)
+        main.setContentsMargins(0, 0, 0, 0)
+        main.setSpacing(0)
+
+        # LEFT: danh sach nhan vien
+        left = QFrame()
+        left.setFixedWidth(280)
+        left.setStyleSheet(
+            "QFrame { background: white; border-right: 1px solid #E2E8F0; }")
+        ll = QVBoxLayout(left)
+        ll.setContentsMargins(0, 0, 0, 0)
+        ll.setSpacing(0)
+
+        # Header
+        hdr = QWidget()
+        hdr.setFixedHeight(56)
+        hdr.setStyleSheet("background: white; border-bottom: 1px solid #E2E8F0;")
+        hl = QHBoxLayout(hdr)
+        hl.setContentsMargins(16, 0, 16, 0)
+        title = QLabel("💬 Tin nhắn")
+        title.setFont(QFont(FONT_FAMILY, 14, QFont.Bold))
+        title.setStyleSheet("color: #1A2B4C; border: none;")
+        hl.addWidget(title)
+        hl.addStretch()
+        ll.addWidget(hdr)
+
+        # Staff list scroll
+        self.staff_scroll = QScrollArea()
+        self.staff_scroll.setWidgetResizable(True)
+        self.staff_scroll.setFrameShape(QFrame.NoFrame)
+        self.staff_scroll.setStyleSheet("background: transparent; border: none;")
+        self.staff_container = QWidget()
+        self.staff_container.setStyleSheet("background: transparent;")
+        self.staff_layout = QVBoxLayout(self.staff_container)
+        self.staff_layout.setContentsMargins(0, 0, 0, 0)
+        self.staff_layout.setSpacing(0)
+        self.staff_layout.addStretch()
+        self.staff_scroll.setWidget(self.staff_container)
+        ll.addWidget(self.staff_scroll)
+        main.addWidget(left)
+
+        # RIGHT: chat area
+        right = QWidget()
+        right.setStyleSheet("background: #F8FAFC;")
+        rl = QVBoxLayout(right)
+        rl.setContentsMargins(0, 0, 0, 0)
+        rl.setSpacing(0)
+
+        # Chat header
+        self.chat_header = QWidget()
+        self.chat_header.setFixedHeight(56)
+        self.chat_header.setStyleSheet(
+            "background: white; border-bottom: 1px solid #E2E8F0;")
+        chl = QHBoxLayout(self.chat_header)
+        chl.setContentsMargins(20, 0, 20, 0)
+        self.lbl_chat_name = QLabel("Chọn cuộc trò chuyện")
+        self.lbl_chat_name.setFont(QFont(FONT_FAMILY, 13, QFont.Bold))
+        self.lbl_chat_name.setStyleSheet("color: #1A2B4C; border: none;")
+        self.lbl_chat_role = QLabel("")
+        self.lbl_chat_role.setStyleSheet("color: #718096; font-size: 12px; border: none;")
+        nc = QVBoxLayout(); nc.setSpacing(1)
+        nc.addWidget(self.lbl_chat_name)
+        nc.addWidget(self.lbl_chat_role)
+        chl.addLayout(nc); chl.addStretch()
+        rl.addWidget(self.chat_header)
+
+        # Messages area
+        self.msg_scroll = QScrollArea()
+        self.msg_scroll.setWidgetResizable(True)
+        self.msg_scroll.setFrameShape(QFrame.NoFrame)
+        self.msg_scroll.setStyleSheet("background: transparent; border: none;")
+        self.msg_container = QWidget()
+        self.msg_container.setStyleSheet("background: transparent;")
+        self.msg_layout = QVBoxLayout(self.msg_container)
+        self.msg_layout.setContentsMargins(16, 12, 16, 12)
+        self.msg_layout.setSpacing(4)
+        self.msg_layout.addStretch()
+        self.msg_scroll.setWidget(self.msg_container)
+        rl.addWidget(self.msg_scroll)
+
+        # Input bar
+        input_bar = QWidget()
+        input_bar.setFixedHeight(72)
+        input_bar.setStyleSheet("background: white; border-top: 1px solid #E2E8F0;")
+        il = QHBoxLayout(input_bar)
+        il.setContentsMargins(16, 12, 16, 12)
+        il.setSpacing(10)
+        self.inp_msg = QLineEdit()
+        self.inp_msg.setPlaceholderText("Nhập tin nhắn...")
+        self.inp_msg.setFixedHeight(44)
+        self.inp_msg.setStyleSheet("""
+            QLineEdit {
+                background: #F1F5F9; border: 1px solid #E2E8F0;
+                border-radius: 8px; padding: 0 16px; font-size: 13px; color: #1A2B4C;
+            }
+            QLineEdit:focus { border: 1px solid #3B82F6; background: white; }
+        """)
+        self.inp_msg.returnPressed.connect(self._send)
+        btn_send = QPushButton("Gửi ➤")
+        btn_send.setFixedHeight(44)
+        btn_send.setMinimumWidth(90)
+        btn_send.setCursor(Qt.PointingHandCursor)
+        btn_send.setStyleSheet("""
+            QPushButton {
+                background: #3B82F6; color: white; border: none;
+                border-radius: 8px; font-size: 13px; font-weight: bold;
+            }
+            QPushButton:hover { background: #2563EB; }
+        """)
+        btn_send.clicked.connect(self._send)
+        il.addWidget(self.inp_msg); il.addWidget(btn_send)
+        rl.addWidget(input_bar)
+        main.addWidget(right)
+
+    def refresh(self):
+        self._load_staff_list()
+
+    def _load_staff_list(self):
+        try:
+            from core.services.message_service import get_student_conversations
+            sid = self.portal.current_student.get("StudentID", "")
+            self.all_staff = get_student_conversations(sid)
+        except:
+            self.all_staff = []
+        self._render_staff()
+
+    def _render_staff(self):
+        # Clear old
+        while self.staff_layout.count() > 1:
+            item = self.staff_layout.takeAt(0)
+            if item is None: break
+            w = item.widget()
+            if w: w.setParent(None); w.deleteLater()
+
+        if not self.all_staff:
+            no_lbl = QLabel("Chưa có tin nhắn nào.\nAdmin sẽ liên hệ bạn\nkhi cần thiết.")
+            no_lbl.setAlignment(Qt.AlignCenter)
+            no_lbl.setStyleSheet("color: #A0AEC0; font-size: 12px; padding: 30px; border: none;")
+            self.staff_layout.insertWidget(0, no_lbl)
+            return
+
+        for s in self.all_staff:
+            staff_id = s.get("StaffID", "")
+            name = s.get("Name", "")
+            role = "Quản trị viên" if s.get("Role") == "admin" else "Nhân viên"
+            last_msg = s.get("LastMessage", "") or ""
+            unread = s.get("UnreadCount", 0)
+
+            item = QFrame()
+            item.setCursor(Qt.PointingHandCursor)
+            item.setFixedHeight(68)
+
+            is_selected = self.selected_staff and self.selected_staff.get("StaffID") == staff_id
+            if is_selected:
+                item.setStyleSheet(
+                    "QFrame { background: #EEF2FF; border-left: 3px solid #3B82F6;"
+                    "border-bottom: 1px solid #E2E8F0; }")
+            else:
+                item.setStyleSheet(
+                    "QFrame { background: transparent; border-bottom: 1px solid #F1F5F9; }"
+                    "QFrame:hover { background: #F8FAFC; }")
+
+            row = QHBoxLayout(item)
+            row.setContentsMargins(12, 8, 12, 8)
+            row.setSpacing(10)
+
+            # Avatar
+            initials = "".join(w[0] for w in name.split()[:2]).upper() or "NV"
+            av = QLabel(initials)
+            av.setFixedSize(38, 38)
+            av.setAlignment(Qt.AlignCenter)
+            av.setStyleSheet(
+                "background: #EEF2FF; color: #4F46E5;"
+                "border-radius: 19px; font-weight: bold; font-size: 12px; border: none;")
+            row.addWidget(av)
+
+            # Info
+            info = QVBoxLayout(); info.setSpacing(2)
+            name_lbl = QLabel(name)
+            name_lbl.setStyleSheet(
+                "color: #1A2B4C; font-weight: 600; font-size: 13px; border: none;")
+            sub_text = last_msg[:35] + "..." if len(last_msg) > 35 else (last_msg or role)
+            sub_lbl = QLabel(sub_text)
+            sub_lbl.setStyleSheet("color: #718096; font-size: 11px; border: none;")
+            info.addWidget(name_lbl)
+            info.addWidget(sub_lbl)
+            row.addLayout(info)
+            row.addStretch()
+
+            # Unread badge
+            if unread > 0:
+                badge = QLabel(str(unread))
+                badge.setFixedSize(22, 22)
+                badge.setAlignment(Qt.AlignCenter)
+                badge.setStyleSheet(
+                    "background: #EF4444; color: white;"
+                    "border-radius: 11px; font-size: 11px; font-weight: bold; border: none;")
+                row.addWidget(badge)
+
+            item.mousePressEvent = lambda e, st=s: self._select_staff(st)
+            self.staff_layout.insertWidget(self.staff_layout.count() - 1, item)
+
+    def _select_staff(self, staff):
+        self.selected_staff = staff
+        staff_id = staff.get("StaffID", "")
+        name = staff.get("Name", "")
+        role = "Quản trị viên" if staff.get("Role") == "admin" else "Nhân viên"
+
+        self.lbl_chat_name.setText(name)
+        self.lbl_chat_role.setText(role)
+
+        # Mark as read
+        try:
+            from core.services.message_service import mark_student_read
+            sid = self.portal.current_student.get("StudentID", "")
+            mark_student_read(sid, staff_id)
+        except:
+            pass
+
+        self._load_messages()
+        self._load_staff_list()
+
+    def _load_messages(self):
+        if not self.selected_staff:
+            return
+        from core.services.message_service import get_conversation
+        staff_id = self.selected_staff.get("StaffID", "")
+        student_id = self.portal.current_student.get("StudentID", "")
+
+        msgs = get_conversation(staff_id, student_id)
+
+        # Clear old messages
+        while self.msg_layout.count() > 1:
+            item = self.msg_layout.takeAt(0)
+            if item is None: break
+            w = item.widget()
+            if w: w.setParent(None); w.deleteLater()
+
+        if not msgs:
+            no_msg = QLabel("Chưa có tin nhắn nào.\nHãy bắt đầu cuộc trò chuyện!")
+            no_msg.setAlignment(Qt.AlignCenter)
+            no_msg.setStyleSheet("color: #A0AEC0; font-size: 13px; border: none;")
+            self.msg_layout.insertWidget(0, no_msg)
+        else:
+            from datetime import datetime as dt2
+            idx = 0
+            prev_dt = None
+            for i, msg in enumerate(msgs):
+                is_mine = msg.get("SenderType") == "student"
+                sent_at = msg.get("SentAt", "")
+
+                try:
+                    cur_dt = dt2.strptime(sent_at, "%Y-%m-%d %H:%M:%S")
+                except:
+                    cur_dt = None
+
+                # Time divider if gap > 15 min
+                if cur_dt and prev_dt:
+                    diff = (cur_dt - prev_dt).total_seconds() / 60
+                    if diff >= 15:
+                        time_str = cur_dt.strftime("%H:%M - %d/%m")
+                        div = self._make_time_divider(time_str)
+                        self.msg_layout.insertWidget(idx, div)
+                        idx += 1
+                elif cur_dt and not prev_dt:
+                    time_str = cur_dt.strftime("%H:%M - %d/%m")
+                    div = self._make_time_divider(time_str)
+                    self.msg_layout.insertWidget(idx, div)
+                    idx += 1
+
+                # Show time on last message or before gap
+                is_last = (i == len(msgs) - 1)
+                show_time = is_last
+
+                bubble = self._make_bubble(msg.get("Content", ""), sent_at, is_mine, show_time)
+                self.msg_layout.insertWidget(idx, bubble)
+                idx += 1
+                prev_dt = cur_dt
+
+        # Scroll to bottom
+        QTimer.singleShot(100, lambda: self.msg_scroll.verticalScrollBar().setValue(
+            self.msg_scroll.verticalScrollBar().maximum()))
+
+    def _make_time_divider(self, time_str):
+        w = QWidget()
+        w.setStyleSheet("background: transparent;")
+        lay = QHBoxLayout(w)
+        lay.setContentsMargins(0, 8, 0, 8); lay.setSpacing(8)
+        line1 = QFrame(); line1.setFrameShape(QFrame.HLine)
+        line1.setStyleSheet("background: #E2E8F0; border: none;")
+        lbl = QLabel(time_str)
+        lbl.setStyleSheet(
+            "color: #A0AEC0; font-size: 11px; border: none;"
+            "background: transparent; padding: 0 6px;")
+        lbl.setFixedHeight(16)
+        line2 = QFrame(); line2.setFrameShape(QFrame.HLine)
+        line2.setStyleSheet("background: #E2E8F0; border: none;")
+        lay.addWidget(line1, 1); lay.addWidget(lbl); lay.addWidget(line2, 1)
+        return w
+
+    def _make_bubble(self, content, sent_at, is_mine, show_time):
+        frame = QFrame()
+        frame.setStyleSheet("QFrame { border: none; background: transparent; }")
+        lay = QVBoxLayout(frame)
+        lay.setContentsMargins(8, 1, 8, 1)
+        lay.setSpacing(2)
+
+        bubble_row = QHBoxLayout()
+        bubble_row.setContentsMargins(0, 0, 0, 0)
+
+        MAX_W = 320
+        from PyQt5.QtGui import QFontMetrics
+        fm = QFontMetrics(QFont(FONT_FAMILY, 10))
+        single_w = fm.horizontalAdvance(content) + 28
+        actual_w = min(single_w, MAX_W)
+
+        bubble = QLabel(content)
+        bubble.setWordWrap(True)
+        bubble.setFixedWidth(actual_w)
+        bubble.setTextInteractionFlags(Qt.TextSelectableByMouse)
+
+        if is_mine:
+            bubble.setStyleSheet(
+                "background: #3B82F6; color: white;"
+                "border-radius: 16px; border-bottom-right-radius: 4px;"
+                "padding: 8px 12px; font-size: 13px; border: none;")
+            bubble_row.addStretch()
+            bubble_row.addWidget(bubble)
+        else:
+            bubble.setStyleSheet(
+                "background: white; color: #1A2B4C;"
+                "border-radius: 16px; border-bottom-left-radius: 4px;"
+                "border: 1px solid #E2E8F0;"
+                "padding: 8px 12px; font-size: 13px;")
+            bubble_row.addWidget(bubble)
+            bubble_row.addStretch()
+
+        lay.addLayout(bubble_row)
+
+        if show_time:
+            try:
+                from datetime import datetime as dt3
+                dt_obj = dt3.strptime(sent_at, "%Y-%m-%d %H:%M:%S")
+                time_str = dt_obj.strftime("%H:%M")
+            except:
+                time_str = sent_at or ""
+            time_lbl = QLabel(time_str)
+            time_lbl.setStyleSheet(
+                "color: #A0AEC0; font-size: 11px; border: none; background: transparent;")
+            time_lbl.setAlignment(Qt.AlignRight if is_mine else Qt.AlignLeft)
+            lay.addWidget(time_lbl)
+
+        return frame
+
+    def _send(self):
+        if not self.selected_staff:
+            QMessageBox.warning(self, "Chưa chọn", "Vui lòng chọn cuộc trò chuyện.")
+            return
+        content = self.inp_msg.text().strip()
+        if not content:
+            return
+
+        from core.services.message_service import send_message
+        student_id = self.portal.current_student.get("StudentID", "")
+        staff_id = self.selected_staff.get("StaffID", "")
+
+        send_message(student_id, "student", staff_id, "staff", content)
+        self.inp_msg.clear()
+        self._load_messages()
+        self._load_staff_list()
+
+    def _auto_refresh(self):
+        if self.selected_staff:
+            self._load_messages()
+        self._load_staff_list()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  9. PROFILE PAGE (Hồ sơ cá nhân)
 # ══════════════════════════════════════════════════════════════════════════════
 class ProfilePage(QWidget):
     def __init__(self, portal, parent=None):
@@ -2300,6 +2692,7 @@ class StudentPortalWindow(QWidget):
             (3, "📊 Cá nhân"),
             (4, "📋 Lịch sử"),
             (5, "📝 Đề xuất"),
+            (7, "💬 Tin nhắn"),
         ]
         for idx, label in nav_items:
             btn = QPushButton(label)
@@ -2312,14 +2705,20 @@ class StudentPortalWindow(QWidget):
 
         nav_lay.addStretch()
 
-        # Chuông thông báo
+        # Chuông thông báo + tin nhắn chưa đọc
         try:
             from core.services.announcement_service import get_announcement_count
             ann_count = get_announcement_count()
         except:
             ann_count = 0
+        try:
+            from core.services.message_service import get_student_unread_count
+            msg_count = get_student_unread_count(self.current_student.get("StudentID", ""))
+        except:
+            msg_count = 0
 
-        bell_text = f"🔔 {ann_count}" if ann_count > 0 else "🔔"
+        total_badge = ann_count + msg_count
+        bell_text = f"🔔 {total_badge}" if total_badge > 0 else "🔔"
         bell_btn = QPushButton(bell_text)
         bell_btn.setCursor(Qt.PointingHandCursor)
         bell_btn.setFixedHeight(32)
@@ -2347,7 +2746,7 @@ class StudentPortalWindow(QWidget):
             QPushButton { background: transparent; color: rgba(255,255,255,0.95); font-weight: bold; font-size: 13px; border: none; text-align: left; }
             QPushButton:hover { color: #F5C05B; text-decoration: underline; }
         """)
-        name_btn.clicked.connect(lambda: self.show_page(7))
+        name_btn.clicked.connect(lambda: self.show_page(8))
         nav_lay.addWidget(name_btn)
         nav_lay.addSpacing(16)
 
@@ -2377,6 +2776,7 @@ class StudentPortalWindow(QWidget):
         self.history_page = BorrowHistoryPage(self)
         self.request_page = BookRequestPage(self)
         self.announce_page = AnnouncementsPage(self)
+        self.messages_page = MessagesPage(self)
         self.profile_page = ProfilePage(self)
 
         self.stack.addWidget(self.home_page)        # 0
@@ -2386,7 +2786,8 @@ class StudentPortalWindow(QWidget):
         self.stack.addWidget(self.history_page)     # 4
         self.stack.addWidget(self.request_page)     # 5
         self.stack.addWidget(self.announce_page)    # 6
-        self.stack.addWidget(self.profile_page)     # 7
+        self.stack.addWidget(self.messages_page)    # 7
+        self.stack.addWidget(self.profile_page)     # 8
 
         root.addWidget(self.stack, 1)
 
@@ -2420,7 +2821,8 @@ class StudentPortalWindow(QWidget):
             4: self.history_page,
             5: self.request_page,
             6: self.announce_page,
-            7: self.profile_page,
+            7: self.messages_page,
+            8: self.profile_page,
         }
         page = page_map.get(index)
         if page and hasattr(page, 'refresh'):
@@ -2434,8 +2836,12 @@ class StudentPortalWindow(QWidget):
             QMessageBox.No
         )
         if reply == QMessageBox.Yes:
-            from user_app.gui.login_gui import LoginWindow
-            self.login = LoginWindow()
+            try:
+                from shared.login_gui import UnifiedLoginWindow
+                self.login = UnifiedLoginWindow()
+            except:
+                from user_app.gui.login_gui import LoginWindow
+                self.login = LoginWindow()
             self.login.show()
             self.close()
 

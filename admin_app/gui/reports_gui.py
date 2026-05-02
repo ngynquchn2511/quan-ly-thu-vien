@@ -135,7 +135,125 @@ class BarChart(QWidget):
         p.drawLine(pad_l, pad_t + chart_h, W - pad_r, pad_t + chart_h)
 
 
-# ── Query helpers ─────────────────────────────────────────────────────────────
+# ── Bieu do duong cho muon/mat sach ───────────────────────────────────────────
+class LineCompareChart(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.labels = []
+        self.borrow_values = []
+        self.lost_values = []
+        self.title = ""
+        self.sub_labels = []
+        self.setMinimumHeight(340)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+    def set_series(self, labels, borrow_values, lost_values, title="", sub_labels=None):
+        self.labels = labels or []
+        self.borrow_values = borrow_values or []
+        self.lost_values = lost_values or []
+        self.title = title
+        self.sub_labels = sub_labels or []
+        self.update()
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        W, H = self.width(), self.height()
+        pad_l, pad_r, pad_t, pad_b = 70, 30, 56, 76
+
+        if self.title:
+            p.setPen(QColor(styles.TEXT_DARK))
+            p.setFont(QFont("Segoe UI", 12, QFont.Bold))
+            p.drawText(0, 8, W, 24, Qt.AlignCenter, self.title)
+
+        if not self.labels:
+            p.setPen(QColor(styles.TEXT_MUTED))
+            p.setFont(QFont("Segoe UI", 12))
+            p.drawText(self.rect(), Qt.AlignCenter, "Chưa có dữ liệu")
+            return
+
+        chart_w = W - pad_l - pad_r
+        chart_h = H - pad_t - pad_b
+        max_val = max(self.borrow_values + self.lost_values + [1])
+
+        p.setPen(QPen(QColor(styles.BORDER), 0.5))
+        for i in range(5):
+            y = pad_t + int(chart_h * i / 4)
+            p.drawLine(pad_l, y, W - pad_r, y)
+            val = int(max_val * (4 - i) / 4)
+            p.setPen(QColor(styles.TEXT_MUTED))
+            p.setFont(QFont("Segoe UI", 9))
+            p.drawText(0, y - 8, pad_l - 6, 16, Qt.AlignRight | Qt.AlignVCenter, str(val))
+            p.setPen(QPen(QColor(styles.BORDER), 0.5))
+
+        n = len(self.labels)
+        if n == 1:
+            xs = [pad_l + chart_w // 2]
+        else:
+            gap = chart_w / max(1, n - 1)
+            xs = [pad_l + int(i * gap) for i in range(n)]
+        base_y = pad_t + chart_h
+
+        def calc_points(values):
+            return [
+                (xs[i], pad_t + chart_h - int(chart_h * values[i] / max_val if max_val else 0))
+                for i in range(n)
+            ]
+
+        borrow_points = calc_points(self.borrow_values)
+        lost_points = calc_points(self.lost_values)
+        green = QColor("#16A34A")
+        blue = QColor("#2563EB")
+
+        def draw_series(points, color, values):
+            if not points:
+                return
+            p.setPen(QPen(color, 3))
+            for i in range(len(points) - 1):
+                p.drawLine(points[i][0], points[i][1], points[i + 1][0], points[i + 1][1])
+            p.setBrush(QBrush(color))
+            p.setPen(Qt.NoPen)
+            for i, (x, y) in enumerate(points):
+                p.drawEllipse(x - 4, y - 4, 8, 8)
+                if values[i] > 0:
+                    p.setPen(QColor(styles.TEXT_DARK))
+                    p.setFont(QFont("Segoe UI", 8, QFont.Bold))
+                    p.drawText(x - 18, y - 20, 36, 14, Qt.AlignCenter, str(values[i]))
+                    p.setPen(Qt.NoPen)
+
+        draw_series(borrow_points, green, self.borrow_values)
+        draw_series(lost_points, blue, self.lost_values)
+
+        p.setPen(QPen(QColor(styles.BORDER), 1))
+        p.drawLine(pad_l, pad_t, pad_l, base_y)
+        p.drawLine(pad_l, base_y, W - pad_r, base_y)
+
+        for i, x in enumerate(xs):
+            p.setPen(QColor(styles.TEXT_MID))
+            p.setFont(QFont("Segoe UI", 8 if n > 12 else 9))
+            lbl = self.labels[i]
+            if n > 20 and len(lbl) > 2:
+                lbl = lbl[:2]
+            p.drawText(x - 20, H - pad_b + 8, 40, 16, Qt.AlignCenter, lbl)
+            if self.sub_labels:
+                p.setPen(QColor(styles.TEXT_MUTED))
+                p.setFont(QFont("Segoe UI", 8))
+                p.drawText(x - 24, H - pad_b + 24, 48, 14, Qt.AlignCenter, self.sub_labels[i])
+
+        legend_y = H - 28
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(green))
+        p.drawRoundedRect(pad_l + 30, legend_y, 18, 8, 3, 3)
+        p.setBrush(QBrush(blue))
+        p.drawRoundedRect(pad_l + 180, legend_y, 18, 8, 3, 3)
+        p.setPen(QColor(styles.TEXT_MID))
+        p.setFont(QFont("Segoe UI", 9))
+        p.drawText(pad_l + 56, legend_y - 6, 110, 20, Qt.AlignLeft | Qt.AlignVCenter, "Đang mượn")
+        p.drawText(pad_l + 206, legend_y - 6, 90, 20, Qt.AlignLeft | Qt.AlignVCenter, "Mất sách")
+
+
+
+
 def query_by_year(year):
     """So sach cho muon theo tung thang trong nam."""
     conn = get_connection(); cur = conn.cursor()
@@ -199,6 +317,91 @@ def query_all_time():
     """)
     rows = cur.fetchall(); conn.close()
     return [(r[0], r[1]) for r in rows] if rows else [("Chưa có", 0)]
+
+
+def query_borrow_lost_by_year(year):
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute("""
+        SELECT strftime('%m', BorrowDate) as period,
+               SUM(CASE WHEN Status='Borrowing' THEN 1 ELSE 0 END) as borrowing_cnt,
+               SUM(CASE WHEN Status='Lost' THEN 1 ELSE 0 END) as lost_cnt
+        FROM Borrow
+        WHERE strftime('%Y', BorrowDate)=?
+        GROUP BY period ORDER BY period
+    """, (str(year),))
+    rows = {r[0]: (r[1] or 0, r[2] or 0) for r in cur.fetchall()}
+    conn.close()
+    labels = [f"T{i}" for i in range(1, 13)]
+    borrow_values = [rows.get(f"{i:02d}", (0, 0))[0] for i in range(1, 13)]
+    lost_values = [rows.get(f"{i:02d}", (0, 0))[1] for i in range(1, 13)]
+    return labels, borrow_values, lost_values, []
+
+
+def query_borrow_lost_by_month(year, month):
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute("""
+        SELECT strftime('%d', BorrowDate) as period,
+               SUM(CASE WHEN Status='Borrowing' THEN 1 ELSE 0 END) as borrowing_cnt,
+               SUM(CASE WHEN Status='Lost' THEN 1 ELSE 0 END) as lost_cnt
+        FROM Borrow
+        WHERE strftime('%Y', BorrowDate)=?
+          AND strftime('%m', BorrowDate)=?
+        GROUP BY period ORDER BY period
+    """, (str(year), f"{month:02d}"))
+    rows = {r[0]: (r[1] or 0, r[2] or 0) for r in cur.fetchall()}
+    conn.close()
+    import calendar
+    days_in_month = calendar.monthrange(year, month)[1]
+    labels = [str(d) for d in range(1, days_in_month + 1)]
+    borrow_values = [rows.get(f"{d:02d}", (0, 0))[0] for d in range(1, days_in_month + 1)]
+    lost_values = [rows.get(f"{d:02d}", (0, 0))[1] for d in range(1, days_in_month + 1)]
+    return labels, borrow_values, lost_values, []
+
+
+def query_borrow_lost_by_week(year, week):
+    conn = get_connection(); cur = conn.cursor()
+    jan1 = datetime(year, 1, 1)
+    start = jan1 + timedelta(weeks=week-1)
+    start = start - timedelta(days=start.weekday())
+    days = [(start + timedelta(days=i)) for i in range(7)]
+    day_names = ["T2","T3","T4","T5","T6","T7","CN"]
+    labels, sub_labels, borrow_values, lost_values = [], [], [], []
+    for i, d in enumerate(days):
+        date_str = d.strftime("%Y-%m-%d")
+        cur.execute("""
+            SELECT
+                SUM(CASE WHEN Status='Borrowing' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN Status='Lost' THEN 1 ELSE 0 END)
+            FROM Borrow
+            WHERE BorrowDate = ?
+        """, (date_str,))
+        row = cur.fetchone()
+        labels.append(day_names[i])
+        sub_labels.append(d.strftime("%d/%m"))
+        borrow_values.append((row[0] or 0) if row else 0)
+        lost_values.append((row[1] or 0) if row else 0)
+    conn.close()
+    return labels, borrow_values, lost_values, sub_labels
+
+
+def query_borrow_lost_all_time():
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute("""
+        SELECT strftime('%Y', BorrowDate) as period,
+               SUM(CASE WHEN Status='Borrowing' THEN 1 ELSE 0 END) as borrowing_cnt,
+               SUM(CASE WHEN Status='Lost' THEN 1 ELSE 0 END) as lost_cnt
+        FROM Borrow
+        WHERE BorrowDate IS NOT NULL
+        GROUP BY period ORDER BY period
+    """)
+    rows = cur.fetchall()
+    conn.close()
+    if not rows:
+        return ["Chưa có"], [0], [0], []
+    labels = [r[0] for r in rows]
+    borrow_values = [r[1] or 0 for r in rows]
+    lost_values = [r[2] or 0 for r in rows]
+    return labels, borrow_values, lost_values, []
 
 
 # ── Chart Panel ───────────────────────────────────────────────────────────────
@@ -284,6 +487,13 @@ class ChartPanel(QFrame):
         self.chart.setMinimumHeight(400)
         lay.addWidget(self.chart)
 
+        self.borrow_lost_chart = LineCompareChart()
+        self.borrow_lost_chart.hide()
+        lay.addWidget(self.borrow_lost_chart)
+
+        self.mode = "borrow"
+        self.external_loader = None
+
         # Load lan dau
         self.load_chart()
 
@@ -297,8 +507,12 @@ class ChartPanel(QFrame):
         self.lbl_week.setVisible(is_week)
         self.spn_week.setVisible(is_week)
         self.spn_year.setVisible(not is_all)
-        # Tim label "Năm:" - widget truoc spn_year
-        self.load_chart()
+        if self.external_loader:
+            self.external_loader()
+        else:
+            self.chart.show()
+            self.borrow_lost_chart.hide()
+            self.load_chart()
 
     def load_chart(self):
         t     = self.cmb_type.currentText()
@@ -327,9 +541,10 @@ class ChartPanel(QFrame):
                 title = "Tổng số lượt mượn theo năm"
                 color = "#534AB7"
 
+            self.chart.show()
+            self.borrow_lost_chart.hide()
             self.chart.set_data(data, title, color)
 
-            # Summary
             if data and len(data[0]) == 3:
                 total = sum(d[2] for d in data)
                 max_v = max((d[2] for d in data), default=0)
@@ -343,6 +558,12 @@ class ChartPanel(QFrame):
 
         except Exception as e:
             print(f"[Chart] {e}")
+
+    def trigger_refresh(self):
+        if self.external_loader:
+            self.external_loader()
+        else:
+            self.load_chart()
 
 
 # ── Report Card ───────────────────────────────────────────────────────────────
@@ -391,12 +612,12 @@ class ReportsWindow(QWidget):
         # 6 card chuc nang
         grid = QGridLayout(); grid.setSpacing(12)
         cards = [
-            ("📄","Báo cáo mượn trả",  "Xuất Excel theo kỳ",    self._export_borrow),
-            ("📊","Thống kê sách",      "Top sách mượn nhiều",   self._show_chart_and_top),
-            ("⚠", "Danh sách quá hạn", "Kèm tiền phạt",         self._show_overdue),
-            ("👤","Thống kê độc giả",   "Hoạt động theo tháng",  self._show_students),
-            ("💰","Báo cáo tiền phạt",  "Tiền phạt thu được",    self._show_fines),
-            ("📑","Xuất Excel tất cả",  "Toàn bộ dữ liệu",       self._export_borrow),
+            ("📄","Báo cáo mượn trả",    "Xuất Excel theo kỳ",          self._export_borrow),
+            ("📊","Thống kê sách",        "Top sách mượn nhiều",         self._show_chart_and_top),
+            ("📚","TK mượn & mất sách",  "Đang cho mượn và sách mất",   self._show_borrow_lost_stats),
+            ("⚠", "Danh sách quá hạn",   "Kèm tiền phạt",               self._show_overdue),
+            ("👤","Thống kê độc giả",     "Hoạt động theo tháng",        self._show_students),
+            ("💰","Báo cáo tiền phạt",    "Tiền phạt thu được",          self._show_fines),
         ]
         for idx, (icon, title, desc, cb) in enumerate(cards):
             grid.addWidget(ReportCard(icon, title, desc, cb), idx // 3, idx % 3)
@@ -506,6 +727,7 @@ class ReportsWindow(QWidget):
         self.panel_category.hide()
 
     def _show_chart_and_top(self):
+        self.chart_panel.external_loader = None
         self.chart_panel.show()
         self.chart_panel.load_chart()
         self.panel_category.show()
@@ -565,12 +787,56 @@ class ReportsWindow(QWidget):
         self._show_table(f"Báo cáo tiền phạt ({len(data)} phiếu)",
             ["Họ tên","Mã SV","Hạn trả","Ngày trả","Tiền phạt","Trạng thái"], data)
 
+    def _show_borrow_lost_stats(self):
+        t = self.chart_panel.cmb_type.currentText()
+        year = self.chart_panel.spn_year.value()
+        month = self.chart_panel.cmb_month.currentData()
+        week = self.chart_panel.spn_week.value()
+
+        if t == "Năm":
+            labels, borrow_values, lost_values, sub_labels = query_borrow_lost_by_year(year)
+            title = f"Sách đang mượn và mất sách theo tháng — Năm {year}"
+        elif t == "Tháng":
+            labels, borrow_values, lost_values, sub_labels = query_borrow_lost_by_month(year, month)
+            title = f"Sách đang mượn và mất sách theo ngày — Tháng {month}/{year}"
+        elif t == "Tuần":
+            labels, borrow_values, lost_values, sub_labels = query_borrow_lost_by_week(year, week)
+            title = f"Sách đang mượn và mất sách — Tuần {week}/{year}"
+        else:
+            labels, borrow_values, lost_values, sub_labels = query_borrow_lost_all_time()
+            title = "Sách đang mượn và mất sách theo năm"
+
+        total_borrowing = sum(borrow_values)
+        total_lost = sum(lost_values)
+
+        self.chart_panel.show()
+        self.chart_panel.external_loader = self._show_borrow_lost_stats
+        self.chart_panel.chart.hide()
+        self.chart_panel.borrow_lost_chart.show()
+        self.chart_panel.borrow_lost_chart.set_series(
+            labels,
+            borrow_values,
+            lost_values,
+            title,
+            sub_labels
+        )
+        self.chart_panel.lbl_summary.setText(
+            f"Tổng đang cho mượn: {total_borrowing}  •  Tổng mất sách: {total_lost}")
+        self.panel_category.hide()
+
+        data = [(labels[i], borrow_values[i], lost_values[i]) for i in range(len(labels))]
+        self._show_table(
+            f"Thống kê mượn và mất sách theo thời gian ({len(data)} mốc)",
+            ["Thời gian", "Đang mượn", "Mất sách"],
+            data
+        )
+
     def _export_borrow(self):
         self._hide_chart()
         try:
             from reports.export_excel import export_borrow_report
             path, _ = QFileDialog.getSaveFileName(
-                self,"Lưu file","bao_cao_muon_tra.xlsx","Excel (*.xlsx)")
+                self,"Lưu file","bao_cao_muon_tra.csv","CSV (*.csv)")
             if path:
                 export_borrow_report(path)
                 show_msg(self,"Thành công",f"Đã xuất file:\n{path}")
