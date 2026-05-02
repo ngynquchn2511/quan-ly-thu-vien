@@ -225,7 +225,7 @@ class AnnouncementTab(QWidget):
         hdr.setSectionResizeMode(2, QHeaderView.Stretch)
         hdr.setSectionResizeMode(3, QHeaderView.Fixed);  self.table.setColumnWidth(3, 130)
         hdr.setSectionResizeMode(4, QHeaderView.Fixed);  self.table.setColumnWidth(4, 130)
-        hdr.setSectionResizeMode(5, QHeaderView.Fixed);  self.table.setColumnWidth(5, 140)
+        hdr.setSectionResizeMode(5, QHeaderView.Fixed);  self.table.setColumnWidth(5, 120)
         hdr.setSectionResizeMode(6, QHeaderView.Fixed);  self.table.setColumnWidth(6, 140)
         lay.addWidget(self.table)
 
@@ -255,7 +255,7 @@ class AnnouncementTab(QWidget):
             is_imp = r.get("IsImportant", 0)
             bg, fg = ("#FCEBEB", "#991B1B") if is_imp else (styles.BG, styles.TEXT_MUTED)
             txt = "Quan trọng" if is_imp else "Thường"
-            self.table.setCellWidget(i, 5, styles.badge_widget(txt, bg, fg, 100))
+            self.table.setCellWidget(i, 5, styles.badge_widget(txt, bg, fg, 85))
 
             # Nut thao tac
             ann_id = r.get("AnnouncementID")
@@ -274,13 +274,22 @@ class AnnouncementTab(QWidget):
 
     def _add(self):
         from core.services.announcement_service import add_announcement
+        from core.services.email_service import broadcast_announcement
+        import threading
         dlg = AnnouncementDialog(self)
         if dlg.exec_() == QDialog.Accepted:
             d = dlg.get_data()
             staff_id = self.current_user.get("StaffID", "unknown")
             ok, msg = add_announcement(d["title"], d["content"], staff_id,
                                        d["related_book_id"], d["is_important"])
-            if ok: self.refresh()
+            if ok:
+                self.refresh()
+                # Gui email background - khong block UI
+                threading.Thread(
+                    target=broadcast_announcement,
+                    args=(d["title"], d["content"], bool(d["is_important"])),
+                    daemon=True
+                ).start()
 
     def _edit(self, ann_id, data):
         from core.services.announcement_service import update_announcement
