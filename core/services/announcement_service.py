@@ -4,6 +4,47 @@ from database.db import get_connection
 from datetime import datetime
 
 
+def get_recent_announcements(limit=4):
+    """Lay thong bao moi nhat (dung cho trang chu user)."""
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute("""
+        SELECT a.AnnouncementID, a.Title, a.Content, a.CreatedAt,
+               a.IsImportant, a.RelatedBookID,
+               s.Name as StaffName
+        FROM Announcements a
+        LEFT JOIN Staff s ON a.StaffID = s.StaffID
+        ORDER BY a.IsImportant DESC, a.CreatedAt DESC
+        LIMIT ?
+    """, (limit,))
+    rows = cur.fetchall(); conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_announcements(limit=20):
+    """Lay danh sach thong bao (dung cho trang thong bao user)."""
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute("""
+        SELECT a.AnnouncementID, a.Title, a.Content, a.CreatedAt,
+               a.IsImportant, a.RelatedBookID,
+               s.Name as StaffName
+        FROM Announcements a
+        LEFT JOIN Staff s ON a.StaffID = s.StaffID
+        ORDER BY a.IsImportant DESC, a.CreatedAt DESC
+        LIMIT ?
+    """, (limit,))
+    rows = cur.fetchall(); conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_announcement_count():
+    """Dem so thong bao (dung cho badge chuong user)."""
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM Announcements")
+    count = cur.fetchone()[0]
+    conn.close()
+    return count
+
+
 def get_all_announcements(keyword=""):
     conn = get_connection(); cur = conn.cursor()
     kw = f"%{keyword}%"

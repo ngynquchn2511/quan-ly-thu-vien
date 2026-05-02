@@ -225,7 +225,7 @@ class AnnouncementTab(QWidget):
         hdr.setSectionResizeMode(2, QHeaderView.Stretch)
         hdr.setSectionResizeMode(3, QHeaderView.Fixed);  self.table.setColumnWidth(3, 130)
         hdr.setSectionResizeMode(4, QHeaderView.Fixed);  self.table.setColumnWidth(4, 130)
-        hdr.setSectionResizeMode(5, QHeaderView.Fixed);  self.table.setColumnWidth(5, 120)
+        hdr.setSectionResizeMode(5, QHeaderView.Fixed);  self.table.setColumnWidth(5, 140)
         hdr.setSectionResizeMode(6, QHeaderView.Fixed);  self.table.setColumnWidth(6, 140)
         lay.addWidget(self.table)
 
@@ -255,7 +255,7 @@ class AnnouncementTab(QWidget):
             is_imp = r.get("IsImportant", 0)
             bg, fg = ("#FCEBEB", "#991B1B") if is_imp else (styles.BG, styles.TEXT_MUTED)
             txt = "Quan trọng" if is_imp else "Thường"
-            self.table.setCellWidget(i, 5, styles.badge_widget(txt, bg, fg, 85))
+            self.table.setCellWidget(i, 5, styles.badge_widget(txt, bg, fg, 100))
 
             # Nut thao tac
             ann_id = r.get("AnnouncementID")
