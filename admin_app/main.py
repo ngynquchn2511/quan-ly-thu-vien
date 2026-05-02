@@ -1,20 +1,13 @@
-import sys, os
+import sys
+import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtGui import QFont
-from database.db import init_database
-from shared.login_gui import LoginWindow
-import core.styles as styles
+
+from main import main as run_main
+
 
 def main():
-    init_database()
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    app.setFont(QFont("Segoe UI", 14))
-    app.setStyleSheet(styles.APP_STYLE + styles.MSGBOX)
-    window = LoginWindow()
-    window.show()
-    sys.exit(app.exec_())
+    run_main()
+
 
 if __name__ == "__main__":
     main()
