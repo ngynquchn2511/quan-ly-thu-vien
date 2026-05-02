@@ -91,3 +91,74 @@ def get_unread_count(staff_id):
         WHERE ReceiverType='staff' AND IsRead=0
     """)
     return cur.fetchone()[0]
+
+
+def get_student_unread_count(student_id):
+    """Dem tin nhan chua doc gui den sinh vien."""
+    init_messages_table()
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute("""
+        SELECT COUNT(*) FROM Messages
+        WHERE ReceiverID=? AND ReceiverType='student' AND IsRead=0
+    """, (student_id,))
+    count = cur.fetchone()[0]
+    conn.close()
+    return count
+
+
+def mark_student_read(student_id, staff_id):
+    """Danh dau tin nhan gui den sinh vien tu 1 staff la da doc."""
+    init_messages_table()
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute("""
+        UPDATE Messages SET IsRead=1
+        WHERE ReceiverID=? AND SenderID=? AND ReceiverType='student' AND IsRead=0
+    """, (student_id, staff_id))
+    conn.commit(); conn.close()
+
+
+def get_student_conversations(student_id):
+    """Lay danh sach nhan vien da nhan tin voi sinh vien, kem tin nhan moi nhat."""
+    init_messages_table()
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute("""
+        SELECT DISTINCT
+            CASE WHEN m.SenderType='staff' THEN m.SenderID ELSE m.ReceiverID END as StaffID
+        FROM Messages m
+        WHERE m.SenderID=? OR m.ReceiverID=?
+    """, (student_id, student_id))
+    staff_ids = [r[0] for r in cur.fetchall()]
+
+    result = []
+    for sid in staff_ids:
+        cur.execute("SELECT StaffID, Name, Role FROM Staff WHERE StaffID=?", (sid,))
+        staff_row = cur.fetchone()
+        if not staff_row:
+            continue
+        # Tin nhan moi nhat
+        cur.execute("""
+            SELECT Content, SentAt FROM Messages
+            WHERE (SenderID=? AND ReceiverID=?) OR (SenderID=? AND ReceiverID=?)
+            ORDER BY SentAt DESC LIMIT 1
+        """, (sid, student_id, student_id, sid))
+        last = cur.fetchone()
+        # Dem chua doc
+        cur.execute("""
+            SELECT COUNT(*) FROM Messages
+            WHERE SenderID=? AND ReceiverID=? AND ReceiverType='student' AND IsRead=0
+        """, (sid, student_id))
+        unread = cur.fetchone()[0]
+
+        result.append({
+            "StaffID": staff_row["StaffID"],
+            "Name": staff_row["Name"],
+            "Role": staff_row["Role"],
+            "LastMessage": last["Content"] if last else "",
+            "LastAt": last["SentAt"] if last else "",
+            "UnreadCount": unread,
+        })
+
+    conn.close()
+    # Sap xep: chua doc truoc, roi theo thoi gian
+    result.sort(key=lambda x: (-x["UnreadCount"], -(ord(x["LastAt"][0]) if x["LastAt"] else 0)))
+    return result
