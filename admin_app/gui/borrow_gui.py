@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from core.services.borrow_service import (
-    borrow_book, return_book, get_active_borrows,
+    borrow_book, borrow_books, return_book, get_active_borrows,
     update_overdue_status, mark_lost, resolve_lost
 )
 from core.services.student_service import get_student_by_id
@@ -20,15 +20,53 @@ import core.styles as styles
 
 
 MSG_STYLE = """
-    QMessageBox { background: #F7F8FC; }
-    QLabel { color: #1E293B; font-size: 14px; background: transparent; }
-    QPushButton {
-        background: white; color: #1E293B;
-        border: 1px solid #E2E8F0; border-radius: 6px;
-        padding: 8px 20px; min-width: 80px; font-size: 13px;
+    QMessageBox {
+        background: #F8FAFC;
     }
-    QPushButton:hover { background: #EBF1FD; color: #5B8DEF; border-color: #5B8DEF; }
+    QMessageBox QLabel {
+        color: #0F172A;
+        font-size: 14px;
+        font-weight: 500;
+        background: transparent;
+    }
+    QMessageBox QPushButton {
+        background: #FFFFFF;
+        color: #0F172A;
+        border: 1px solid #CBD5E1;
+        border-radius: 8px;
+        padding: 8px 20px;
+        min-width: 88px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    QMessageBox QPushButton:hover {
+        background: #EAF2FF;
+        color: #1D4ED8;
+        border-color: #93C5FD;
+    }
+    QMessageBox QPushButton:pressed {
+        background: #DBEAFE;
+    }
 """
+
+
+def _show_styled_message(parent, title, text, icon=QMessageBox.Information):
+    msg = QMessageBox(parent)
+    msg.setWindowTitle(title)
+    msg.setText(text)
+    msg.setIcon(icon)
+    msg.setStandardButtons(QMessageBox.Ok)
+    msg.button(QMessageBox.Ok).setText("OK")
+    msg.setStyleSheet(MSG_STYLE)
+    return msg.exec_()
+
+
+def show_info(parent, title, text):
+    return _show_styled_message(parent, title, text, QMessageBox.Information)
+
+
+def show_warn(parent, title, text):
+    return _show_styled_message(parent, title, text, QMessageBox.Warning)
 
 
 def get_borrow_history(keyword=""):
@@ -194,11 +232,11 @@ class LostBookDialog(QDialog):
         lay.addWidget(title); lay.addWidget(styles.section_divider())
         info = QFrame(); info.setStyleSheet(styles.INFO_BANNER)
         il = QVBoxLayout(info); il.setContentsMargins(14,10,14,10); il.setSpacing(4)
-        for text in [f"Sinh viên: {student_name}", f"Sách: {book_title}"]:
+        for text in [f"Độc giả: {student_name}", f"Sách: {book_title}"]:
             lbl = QLabel(text); lbl.setStyleSheet(f"color:{styles.TEXT_DARK}; border:none;")
             il.addWidget(lbl)
         lay.addWidget(info)
-        warn = QLabel("⚠ Thẻ sinh viên sẽ bị KHÓA sau khi xác nhận mất sách!")
+        warn = QLabel("⚠ Thẻ độc giả sẽ bị KHÓA sau khi xác nhận mất sách!")
         warn.setStyleSheet(f"color:{styles.DANGER}; font-weight:600; border:none;")
         warn.setWordWrap(True); lay.addWidget(warn)
         fl = QHBoxLayout(); fl.setSpacing(10)
@@ -249,7 +287,7 @@ class InfoChip(QFrame):
 
 
 class BorrowWindow(QWidget):
-    COLS = ["Mã phiếu","Mã SV","Họ tên","Tên sách",
+    COLS = ["Mã phiếu","Mã độc giả","Họ tên","Tên sách",
             "Ngày mượn","Hạn trả","Trạng thái","Tiền phạt","Thao tác"]
 
     def __init__(self, current_user=None, parent=None):
@@ -275,9 +313,9 @@ class BorrowWindow(QWidget):
 
         def lbl(t): return styles.field_label(t)
 
-        ll.addWidget(lbl("Mã sinh viên"))
+        ll.addWidget(lbl("Mã độc giả"))
         sv_row = QHBoxLayout(); sv_row.setSpacing(8)
-        self.inp_sv = QLineEdit(); self.inp_sv.setPlaceholderText("Nhập mã SV...")
+        self.inp_sv = QLineEdit(); self.inp_sv.setPlaceholderText("Nhập mã độc giả...")
         self.inp_sv.setStyleSheet(styles.INPUT); self.inp_sv.setFixedHeight(40)
         btn_sv = QPushButton("Tìm"); btn_sv.setStyleSheet(styles.BTN_PRIMARY)
         btn_sv.setFixedSize(70,40); btn_sv.clicked.connect(self._lookup_sv)
@@ -287,13 +325,24 @@ class BorrowWindow(QWidget):
 
         ll.addWidget(lbl("Mã sách / ISBN"))
         bk_row = QHBoxLayout(); bk_row.setSpacing(8)
-        self.inp_bk = QLineEdit(); self.inp_bk.setPlaceholderText("Nhập mã sách...")
+        self.inp_bk = QLineEdit(); self.inp_bk.setPlaceholderText("Nhập 1 hoặc nhiều mã sách, ví dụ: BK001, BK002...")
         self.inp_bk.setStyleSheet(styles.INPUT); self.inp_bk.setFixedHeight(40)
         btn_bk = QPushButton("Tìm"); btn_bk.setStyleSheet(styles.BTN_PRIMARY)
         btn_bk.setFixedSize(70,40); btn_bk.clicked.connect(self._lookup_bk)
         bk_row.addWidget(self.inp_bk); bk_row.addWidget(btn_bk)
         ll.addLayout(bk_row)
+        hint = QLabel("Có thể nhập nhiều mã sách, phân cách bằng dấu phẩy hoặc chấm phẩy.")
+        hint.setStyleSheet(f"color:{styles.TEXT_MUTED}; font-size:12px; border:none;")
+        hint.setWordWrap(True)
+        ll.addWidget(hint)
         self.chip_bk = InfoChip(); ll.addWidget(self.chip_bk)
+        self.lbl_bk_multi = QLabel()
+        self.lbl_bk_multi.setWordWrap(True)
+        self.lbl_bk_multi.setStyleSheet(
+            f"color:{styles.TEXT_DARK}; background:{styles.BG}; border:1px solid {styles.BORDER}; "
+            f"border-radius:8px; padding:10px 12px;")
+        self.lbl_bk_multi.hide()
+        ll.addWidget(self.lbl_bk_multi)
 
         date_row = QHBoxLayout(); date_row.setSpacing(12)
         dl = QVBoxLayout(); dl.setSpacing(4); dl.addWidget(lbl("Ngày mượn"))
@@ -318,7 +367,7 @@ class BorrowWindow(QWidget):
 
         sr = QHBoxLayout(); sr.setSpacing(8)
         self.inp_search = QLineEdit()
-        self.inp_search.setPlaceholderText("Tìm theo mã SV, tên sách...")
+        self.inp_search.setPlaceholderText("Tìm theo mã độc giả, tên sách...")
         self.inp_search.setStyleSheet(styles.INPUT); self.inp_search.setFixedHeight(40)
         self.inp_search.textChanged.connect(self.refresh_table)
         btn_ref = QPushButton("Làm mới"); btn_ref.setStyleSheet(styles.BTN_OUTLINE)
@@ -345,7 +394,7 @@ class BorrowWindow(QWidget):
 
         hdr = self.table.horizontalHeader()
         hdr.setSectionResizeMode(0, QHeaderView.Fixed); self.table.setColumnWidth(0, 80)   # Ma phieu
-        hdr.setSectionResizeMode(1, QHeaderView.Fixed); self.table.setColumnWidth(1, 120)  # Ma SV
+        hdr.setSectionResizeMode(1, QHeaderView.Fixed); self.table.setColumnWidth(1, 120)  # Ma doc gia
         hdr.setSectionResizeMode(2, QHeaderView.Fixed); self.table.setColumnWidth(2, 160)  # Ho ten
         hdr.setSectionResizeMode(3, QHeaderView.Stretch)                                   # Ten sach
         hdr.setSectionResizeMode(4, QHeaderView.Fixed); self.table.setColumnWidth(4, 110)  # Ngay muon
@@ -361,7 +410,8 @@ class BorrowWindow(QWidget):
         if not sid: return
         data = get_student_by_id(sid)
         if not data:
-            QMessageBox.warning(self,"Không tìm thấy","Không tìm thấy sinh viên."); return
+            show_warn(self,"Không tìm thấy","Không tìm thấy độc giả.")
+            return
         exp = data.get("CardExpire","") or ""
         valid = exp >= datetime.now().strftime("%Y-%m-%d") if exp else False
         blocked = data.get("CardStatus","") == "blocked"
@@ -373,28 +423,86 @@ class BorrowWindow(QWidget):
             f"{data.get('Class','')} — {data.get('Faculty','')} | {status_text}", valid)
 
     def _lookup_bk(self):
-        bid = self.inp_bk.text().strip()
-        if not bid: return
-        data = get_book_by_id(bid)
-        if not data:
-            QMessageBox.warning(self,"Không tìm thấy","Không tìm thấy sách."); return
-        avail = data.get("Available",0)
-        self.chip_bk.set_content(data.get("Title","")[:2], data.get("Title",""),
-            f"Tác giả: {data.get('Author','')} | Còn: {avail} cuốn | Kệ: {data.get('Location','')}",
-            avail > 0)
+        raw = self.inp_bk.text().strip()
+        if not raw:
+            self.chip_bk.hide()
+            self.lbl_bk_multi.hide()
+            return
+
+        book_ids = [x.strip() for x in raw.replace(";", ",").split(",") if x.strip()]
+        if not book_ids:
+            self.chip_bk.hide()
+            self.lbl_bk_multi.hide()
+            return
+
+        preview_lines = []
+        valid_count = 0
+        first_ok_book = None
+
+        for bid in book_ids:
+            data = get_book_by_id(bid)
+            if not data:
+                preview_lines.append(f"• {bid}: Không tìm thấy sách")
+                continue
+
+            avail = data.get("Available", 0)
+            status = "Hợp lệ" if avail > 0 else "Hết sách"
+            if avail > 0:
+                valid_count += 1
+                if first_ok_book is None:
+                    first_ok_book = data
+            preview_lines.append(
+                f"• {bid} — {data.get('Title','')} | Còn: {avail} | {status}"
+            )
+
+        summary_book = first_ok_book or get_book_by_id(book_ids[0])
+        if summary_book:
+            self.chip_bk.set_content(
+                summary_book.get("Title", "")[:2],
+                f"{len(book_ids)} mã sách đã nhập",
+                f"Hợp lệ: {valid_count}/{len(book_ids)} cuốn",
+                valid_count > 0
+            )
+            self.chip_bk.show()
+        else:
+            self.chip_bk.hide()
+
+        self.lbl_bk_multi.setText("\n".join(preview_lines))
+        self.lbl_bk_multi.show()
 
     def _do_borrow(self):
-        sid = self.inp_sv.text().strip(); bid = self.inp_bk.text().strip()
-        if not sid or not bid:
-            QMessageBox.warning(self,"Thiếu thông tin","Vui lòng nhập mã SV và mã sách."); return
-        ok, msg = borrow_book(sid, bid)
+        sid = self.inp_sv.text().strip()
+        raw_books = self.inp_bk.text().strip()
+        if not sid or not raw_books:
+            show_warn(self,"Thiếu thông tin","Vui lòng nhập mã độc giả và ít nhất 1 mã sách.")
+            return
+
+        book_ids = [x.strip() for x in raw_books.replace(";", ",").split(",") if x.strip()]
+        if len(book_ids) <= 1:
+            ok, msg = borrow_book(sid, book_ids[0])
+            if ok:
+                show_info(self,"Thành công",msg)
+                self.inp_sv.clear(); self.inp_bk.clear()
+                self.chip_sv.hide(); self.chip_bk.hide(); self.lbl_bk_multi.hide()
+                self.refresh_table()
+            else:
+                show_warn(self,"Không thể mượn",msg)
+            return
+
+        ok, msg, failed = borrow_books(sid, book_ids)
         if ok:
-            QMessageBox.information(self,"Thành công",msg)
+            detail = ""
+            if failed:
+                detail = "\n\nKhông mượn được:\n" + "\n".join([f"- {bid}: {reason}" for bid, reason in failed[:10]])
+            show_info(self,"Thành công",msg + detail)
             self.inp_sv.clear(); self.inp_bk.clear()
-            self.chip_sv.hide(); self.chip_bk.hide()
+            self.chip_sv.hide(); self.chip_bk.hide(); self.lbl_bk_multi.hide()
             self.refresh_table()
         else:
-            QMessageBox.warning(self,"Không thể mượn",msg)
+            detail = ""
+            if failed:
+                detail = "\n\nChi tiết:\n" + "\n".join([f"- {bid}: {reason}" for bid, reason in failed[:10]])
+            show_warn(self,"Không thể mượn",msg + detail)
 
     def refresh_table(self):
         update_overdue_status()
@@ -487,8 +595,11 @@ class BorrowWindow(QWidget):
         msg.setStyleSheet(MSG_STYLE)
         if msg.exec_() == QMessageBox.Yes:
             ok, msg_text, fine = return_book(borrow_id)
-            if ok: QMessageBox.information(self,"Thành công",msg_text); self.refresh_table()
-            else:  QMessageBox.warning(self,"Lỗi",msg_text)
+            if ok:
+                show_info(self,"Thành công",msg_text)
+                self.refresh_table()
+            else:
+                show_warn(self,"Lỗi",msg_text)
 
     def _do_lost(self, borrow_id, book_id, sv_name, bk_title):
         data = get_book_by_id(book_id)
@@ -498,12 +609,15 @@ class BorrowWindow(QWidget):
             fine = dlg.get_fine()
             staff_id = self.current_user.get("StaffID","unknown")
             ok, msg = mark_lost(borrow_id, fine, staff_id)
-            if ok: QMessageBox.information(self,"Đã xử lý",msg); self.refresh_table()
-            else:  QMessageBox.warning(self,"Lỗi",msg)
+            if ok:
+                show_info(self,"Đã xử lý",msg)
+                self.refresh_table()
+            else:
+                show_warn(self,"Lỗi",msg)
 
     def _do_resolve(self, borrow_id):
         msg = QMessageBox(self); msg.setWindowTitle("Xác nhận giải quyết")
-        msg.setText("Xác nhận sinh viên đã nộp phạt?\nThẻ sinh viên sẽ được mở khóa.")
+        msg.setText("Xác nhận độc giả đã nộp phạt?\nThẻ độc giả sẽ được mở khóa.")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         msg.setDefaultButton(QMessageBox.No)
         msg.button(QMessageBox.Yes).setText("Xác nhận"); msg.button(QMessageBox.No).setText("Huỷ")
@@ -511,8 +625,11 @@ class BorrowWindow(QWidget):
         if msg.exec_() == QMessageBox.Yes:
             staff_id = self.current_user.get("StaffID","unknown")
             ok, msg_text = resolve_lost(borrow_id, staff_id)
-            if ok: QMessageBox.information(self,"Thành công",msg_text); self.refresh_table()
-            else:  QMessageBox.warning(self,"Lỗi",msg_text)
+            if ok:
+                show_info(self,"Thành công",msg_text)
+                self.refresh_table()
+            else:
+                show_warn(self,"Lỗi",msg_text)
 
     def _show_history(self):
         HistoryDialog(self).exec_()

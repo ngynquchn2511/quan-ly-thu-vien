@@ -5,21 +5,32 @@ from database.db import get_connection
 from datetime import datetime, timedelta
 
 
+def _insert_log(cur, staff_id, action, target_id, detail=""):
+    cur.execute("""
+        INSERT INTO AuditLog (StaffID, Action, TargetID, Timestamp, Detail)
+        VALUES (?, ?, ?, ?, ?)
+    """, (
+        staff_id,
+        action,
+        str(target_id),
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        detail,
+    ))
+
+
+
 def write_log(staff_id, action, target_id, detail=""):
+    conn = None
     try:
-        conn = get_connection(); cur = conn.cursor()
-        cur.execute("PRAGMA table_info(AuditLog)")
-        cols = [r[1] for r in cur.fetchall()]
-        if "Detail" not in cols:
-            cur.execute("ALTER TABLE AuditLog ADD COLUMN Detail TEXT")
-        cur.execute("""
-            INSERT INTO AuditLog (StaffID, Action, TargetID, Timestamp, Detail)
-            VALUES (?, ?, ?, ?, ?)
-        """, (staff_id, action, str(target_id),
-              datetime.now().strftime("%Y-%m-%d %H:%M:%S"), detail))
-        conn.commit(); conn.close()
+        conn = get_connection()
+        cur = conn.cursor()
+        _insert_log(cur, staff_id, action, target_id, detail)
+        conn.commit()
     except Exception as e:
         print(f"[Log] {e}")
+    finally:
+        if conn:
+            conn.close()
 
 
 def get_fine_per_day():
@@ -29,69 +40,137 @@ def get_fine_per_day():
     return row[0] if row else 2000
 
 
-def borrow_book(student_id, book_id):
-    conn = get_connection(); cur = conn.cursor()
+def _validate_borrow(cur, student_id, book_id, current_active_count=None):
     today = datetime.now().strftime("%Y-%m-%d")
 
-    # Kiem tra sinh vien
     cur.execute("SELECT Name, CardExpire, CardStatus FROM Students WHERE StudentID=?",
                 (student_id,))
     sv = cur.fetchone()
     if not sv:
-        conn.close(); return False, "Không tìm thấy sinh viên."
+        return False, "Không tìm thấy độc giả."
     if sv["CardStatus"] == "blocked":
-        conn.close()
-        return False, "Thẻ sinh viên đã bị khóa do vi phạm. Vui lòng liên hệ thủ thư."
+        return False, "Thẻ độc giả đã bị khóa do vi phạm. Vui lòng liên hệ thủ thư."
     if sv["CardExpire"] and sv["CardExpire"] < today:
-        conn.close(); return False, "Thẻ thư viện đã hết hạn."
+        return False, "Thẻ thư viện đã hết hạn."
 
-    # Kiem tra sach
     cur.execute("SELECT Title, Available FROM Books WHERE BookID=?", (book_id,))
     bk = cur.fetchone()
     if not bk:
-        conn.close(); return False, "Không tìm thấy sách."
+        return False, "Không tìm thấy sách."
     if bk["Available"] <= 0:
-        conn.close(); return False, "Sách hiện không còn."
+        return False, "Sách hiện không còn."
 
-    # Kiem tra gioi han muon (3 cuon)
-    cur.execute("""
-        SELECT COUNT(*) FROM Borrow
-        WHERE StudentID=? AND Status IN ('Borrowing','Overdue')
-    """, (student_id,))
-    if cur.fetchone()[0] >= 3:
-        conn.close(); return False, "Sinh viên đang mượn tối đa 3 cuốn."
+    if current_active_count is None:
+        cur.execute("""
+            SELECT COUNT(*) FROM Borrow
+            WHERE StudentID=? AND Status IN ('Borrowing','Overdue')
+        """, (student_id,))
+        current_active_count = cur.fetchone()[0]
+    if current_active_count >= 5:
+        return False, "Độc giả đang mượn tối đa 5 cuốn."
 
-    # Kiem tra co qua han khong
     cur.execute("""
         SELECT COUNT(*) FROM Borrow
         WHERE StudentID=? AND Status='Overdue'
     """, (student_id,))
     if cur.fetchone()[0] > 0:
-        conn.close()
-        return False, "Sinh viên có sách quá hạn chưa trả. Vui lòng xử lý trước."
+        return False, "Độc giả có sách quá hạn chưa trả. Vui lòng xử lý trước."
 
-    # Kiem tra co sach mat khong
     cur.execute("""
         SELECT COUNT(*) FROM Borrow
         WHERE StudentID=? AND Status='Lost'
     """, (student_id,))
     if cur.fetchone()[0] > 0:
-        conn.close()
-        return False, "Sinh viên có sách bị mất chưa xử lý. Vui lòng liên hệ thủ thư."
+        return False, "Độc giả có sách bị mất chưa xử lý. Vui lòng liên hệ thủ thư."
 
     due = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
+    return True, {"due": due, "book_title": bk["Title"]}
+
+
+
+def borrow_book(student_id, book_id):
+    conn = get_connection(); cur = conn.cursor()
+
+    ok, result = _validate_borrow(cur, student_id, book_id)
+    if not ok:
+        conn.close()
+        return False, result
+
+    due = result["due"]
+    today = datetime.now().strftime("%Y-%m-%d")
     cur.execute("""
         INSERT INTO Borrow (StudentID,BookID,BorrowDate,DueDate,Status)
         VALUES (?,?,?,?,'Borrowing')
     """, (student_id, book_id, today, due))
     cur.execute(
         "UPDATE Books SET Available=Available-1 WHERE BookID=?", (book_id,))
-    conn.commit()
-    borrow_id = cur.lastrowid
-    conn.close()
-    write_log("system", "Mượn sách", student_id,
+    _insert_log(cur, "system", "Mượn sách", student_id,
               f"Sách: {book_id} | Hạn trả: {due}")
+    conn.commit()
+    conn.close()
     return True, f"Mượn thành công! Hạn trả: {due}"
+
+
+
+def borrow_books(student_id, book_ids):
+    normalized = []
+    seen = set()
+    for raw in book_ids:
+        bid = (raw or "").strip()
+        if not bid or bid in seen:
+            continue
+        normalized.append(bid)
+        seen.add(bid)
+
+    if not normalized:
+        return False, "Vui lòng nhập ít nhất 1 mã sách.", []
+
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute("""
+        SELECT COUNT(*) FROM Borrow
+        WHERE StudentID=? AND Status IN ('Borrowing','Overdue')
+    """, (student_id,))
+    active_count = cur.fetchone()[0]
+    remaining = 5 - active_count
+    if remaining <= 0:
+        conn.close()
+        return False, "Độc giả đang mượn tối đa 5 cuốn.", []
+
+    success_ids = []
+    failed = []
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    for bid in normalized:
+        if len(success_ids) >= remaining:
+            failed.append((bid, "Vượt quá giới hạn tối đa 5 cuốn đang mượn."))
+            continue
+        ok, result = _validate_borrow(cur, student_id, bid, active_count + len(success_ids))
+        if not ok:
+            failed.append((bid, result))
+            continue
+
+        due = result["due"]
+        cur.execute("""
+            INSERT INTO Borrow (StudentID,BookID,BorrowDate,DueDate,Status)
+            VALUES (?,?,?,?,'Borrowing')
+        """, (student_id, bid, today, due))
+        cur.execute("UPDATE Books SET Available=Available-1 WHERE BookID=?", (bid,))
+        success_ids.append(bid)
+        _insert_log(cur, "system", "Mượn sách", student_id,
+                  f"Sách: {bid} | Hạn trả: {due}")
+
+    conn.commit()
+    conn.close()
+
+    if not success_ids:
+        first_error = failed[0][1] if failed else "Không thể mượn sách."
+        return False, first_error, failed
+
+    summary = f"Mượn thành công {len(success_ids)} cuốn"
+    if failed:
+        summary += f", thất bại {len(failed)} cuốn"
+    summary += "."
+    return True, summary, failed
 
 
 def return_book(borrow_id):
@@ -120,7 +199,7 @@ def return_book(borrow_id):
     cur.execute(
         "UPDATE Books SET Available=Available+1 WHERE BookID=?",
         (borrow["BookID"],))
-    write_log("system", "Trả sách", borrow["StudentID"],
+    _insert_log(cur, "system", "Trả sách", borrow["StudentID"],
               f"Sách: {borrow['BookID']} | Phạt: {fine:,.0f}đ")
 
     # Bo khoa the neu khong con qua han / mat sach
@@ -164,17 +243,14 @@ def mark_lost(borrow_id, fine_amount, staff_id=""):
 
     # Ghi log
     if staff_id:
-        cur.execute("""
-            INSERT INTO AuditLog (StaffID,Action,TargetID,Timestamp,Detail)
-            VALUES (?,?,?,?,?)
-        """, (staff_id, "Mất sách", str(borrow_id), today,
-              f"SV: {borrow['StudentID']} | Sách: {borrow['BookID']} | Phạt: {fine_amount:,.0f}đ"))
+        _insert_log(cur, staff_id, "Mất sách", str(borrow_id),
+              f"SV: {borrow['StudentID']} | Sách: {borrow['BookID']} | Phạt: {fine_amount:,.0f}đ")
     else:
-        write_log("system", "Mất sách", str(borrow_id),
+        _insert_log(cur, "system", "Mất sách", str(borrow_id),
                   f"SV: {borrow['StudentID']} | Sách: {borrow['BookID']}")
 
     conn.commit(); conn.close()
-    return True, f"Đã xử lý mất sách. Thẻ sinh viên bị khóa. Tiền phạt: {fine_amount:,.0f}đ"
+    return True, f"Đã xử lý mất sách. Thẻ độc giả bị khóa. Tiền phạt: {fine_amount:,.0f}đ"
 
 
 def resolve_lost(borrow_id, staff_id=""):
@@ -203,14 +279,11 @@ def resolve_lost(borrow_id, staff_id=""):
             (borrow["StudentID"],))
 
     if staff_id:
-        cur.execute("""
-            INSERT INTO AuditLog (StaffID,Action,TargetID,Timestamp,Detail)
-            VALUES (?,?,?,?,?)
-        """, (staff_id, "Giải quyết mất sách", str(borrow_id), today,
-              f"SV: {borrow['StudentID']} | Sách: {borrow['BookID']}"))
+        _insert_log(cur, staff_id, "Giải quyết mất sách", str(borrow_id),
+              f"SV: {borrow['StudentID']} | Sách: {borrow['BookID']}")
 
     conn.commit(); conn.close()
-    return True, "Đã giải quyết xong. Thẻ sinh viên được mở khóa."
+    return True, "Đã giải quyết xong. Thẻ độc giả được mở khóa."
 
 
 def get_active_borrows(keyword=""):
