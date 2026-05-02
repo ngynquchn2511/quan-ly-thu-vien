@@ -2836,8 +2836,12 @@ class StudentPortalWindow(QWidget):
             QMessageBox.No
         )
         if reply == QMessageBox.Yes:
-            from user_app.gui.login_gui import LoginWindow
-            self.login = LoginWindow()
+            try:
+                from shared.login_gui import UnifiedLoginWindow
+                self.login = UnifiedLoginWindow()
+            except:
+                from user_app.gui.login_gui import LoginWindow
+                self.login = LoginWindow()
             self.login.show()
             self.close()
 
