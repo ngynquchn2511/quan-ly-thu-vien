@@ -647,11 +647,24 @@ class ReportsWindow(QWidget):
         self.panel_category.hide()
         lay.addWidget(self.panel_category)
 
-        # Bang ket qua
+        # Bang ket qua voi nut Xuat Excel
+        self.result_header = QWidget()
+        hl = QHBoxLayout(self.result_header)
+        hl.setContentsMargins(0, 0, 0, 0)
+        
         self.result_label = QLabel()
         self.result_label.setStyleSheet(f"color:{styles.TEXT_DARK}; font-weight:600; border:none;")
-        self.result_label.hide()
-        lay.addWidget(self.result_label)
+        
+        self.btn_export = QPushButton("📥 Xuất Excel")
+        self.btn_export.setStyleSheet(styles.BTN_OUTLINE)
+        self.btn_export.setFixedWidth(130)
+        self.btn_export.clicked.connect(self._export_table_to_excel)
+        
+        hl.addWidget(self.result_label)
+        hl.addStretch()
+        hl.addWidget(self.btn_export)
+        self.result_header.hide()
+        lay.addWidget(self.result_header)
 
         # Bo loc trang thai
         self.filter_widget = QWidget()
@@ -724,7 +737,8 @@ class ReportsWindow(QWidget):
             self.bar_container.addWidget(rw)
 
     def _show_table(self, title, headers, rows):
-        self.result_label.setText(title); self.result_label.show()
+        self.result_label.setText(title)
+        self.result_header.show()
         self.table.setColumnCount(len(headers))
         self.table.setHorizontalHeaderLabels(headers)
         self.table.setRowCount(0)
@@ -1121,3 +1135,31 @@ class ReportsWindow(QWidget):
             ["Tên sách", "Độc giả mượn", "Mã SV", "Ngày mượn", "Trạng thái", "Tiền phạt"],
             data
         )
+
+    def _export_table_to_excel(self):
+        if self.table.rowCount() == 0:
+            show_msg(self, "Lỗi", "Không có dữ liệu để xuất.")
+            return
+
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Lưu file báo cáo", "", "CSV Files (*.csv);;All Files (*)"
+        )
+        if not path: return
+
+        try:
+            import csv
+            with open(path, "w", encoding="utf-8-sig", newline="") as f:
+                writer = csv.writer(f)
+                headers = [self.table.horizontalHeaderItem(i).text() for i in range(self.table.columnCount())]
+                writer.writerow(headers)
+
+                for r in range(self.table.rowCount()):
+                    row_data = []
+                    for c in range(self.table.columnCount()):
+                        item = self.table.item(r, c)
+                        row_data.append(item.text() if item else "")
+                    writer.writerow(row_data)
+
+            show_msg(self, "Thành công", f"Đã xuất dữ liệu ra file:\n{path}")
+        except Exception as e:
+            show_msg(self, "Lỗi", f"Không thể lưu file: {str(e)}")
