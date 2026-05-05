@@ -948,24 +948,45 @@ class ReportsWindow(QWidget):
         self.chart_panel.chart.show()
         self.chart_panel.chart.set_data(data, title, "#E76F51")
         total = sum(d[-1] for d in data) * 1000
-        self.chart_panel.lbl_summary.setText(f"Tổng tiền phạt: {total:,} VNĐ")
+        self.chart_panel.lbl_summary.setText(f"Tổng tiền phạt trên biểu đồ: {total:,} VNĐ")
         self.panel_category.hide()
+
+        # Update table data to match the selected time period
+        date_cond_table = "1=1"
+        if t == "Năm":
+            date_cond_table = f"strftime('%Y', ReturnDate)='{year}'"
+        elif t == "Tháng":
+            date_cond_table = f"strftime('%Y', ReturnDate)='{year}' AND strftime('%m', ReturnDate)='{month:02d}'"
+        elif t == "Tuần":
+            jan1 = datetime(year, 1, 1)
+            start = jan1 + timedelta(weeks=week-1)
+            start = start - timedelta(days=start.weekday())
+            days = [(start + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
+            days_str = ",".join(f"'{d}'" for d in days)
+            date_cond_table = f"ReturnDate IN ({days_str})"
+
+        conn = get_connection(); cur = conn.cursor()
+        cur.execute(f"""
+            SELECT s.Name, s.StudentID, b.DueDate, b.ReturnDate, b.FineAmount,
+                   CASE b.FinePaid WHEN 1 THEN 'Đã nộp' ELSE 'Chưa nộp' END
+            FROM Borrow b JOIN Students s ON b.StudentID=s.StudentID
+            WHERE b.FineAmount > 0 AND b.ReturnDate IS NOT NULL AND {date_cond_table}
+            ORDER BY b.FineAmount DESC
+        """)
+        rows = cur.fetchall(); conn.close()
+        
+        sum_fines = sum(r[4] for r in rows)
+        data_table = [(r[0],r[1],r[2],r[3] or "",f"{r[4]:,.0f}đ",r[5]) for r in rows]
+        
+        self._show_table(
+            f"Chi tiết tiền phạt kỳ này ({len(data_table)} phiếu) — TỔNG TIỀN: {sum_fines:,.0f} VNĐ",
+            ["Họ tên","Mã SV","Hạn trả","Ngày trả","Tiền phạt","Trạng thái"], 
+            data_table
+        )
 
     def _show_fines(self):
         self._hide_chart()
         self._load_fines_chart()
-
-        conn = get_connection(); cur = conn.cursor()
-        cur.execute("""
-            SELECT s.Name, s.StudentID, b.DueDate, b.ReturnDate, b.FineAmount,
-                   CASE b.FinePaid WHEN 1 THEN 'Đã nộp' ELSE 'Chưa nộp' END
-            FROM Borrow b JOIN Students s ON b.StudentID=s.StudentID
-            WHERE b.FineAmount > 0 ORDER BY b.FineAmount DESC
-        """)
-        rows = cur.fetchall(); conn.close()
-        data = [(r[0],r[1],r[2],r[3] or "",f"{r[4]:,.0f}đ",r[5]) for r in rows]
-        self._show_table(f"Báo cáo tiền phạt ({len(data)} phiếu)",
-            ["Họ tên","Mã SV","Hạn trả","Ngày trả","Tiền phạt","Trạng thái"], data)
 
     def _load_borrow_overview_chart(self):
         t = self.chart_panel.cmb_type.currentText()
