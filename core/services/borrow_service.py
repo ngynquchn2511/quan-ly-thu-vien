@@ -306,6 +306,7 @@ def get_active_borrows(keyword=""):
                 WHEN 'Borrowing' THEN 3
             END,
             b.DueDate ASC
+        LIMIT 100
     """, (kw, kw, kw))
     rows = cur.fetchall(); conn.close()
     return [dict(r) for r in rows]
@@ -319,12 +320,12 @@ def update_overdue_status():
         WHERE Status='Borrowing' AND DueDate < ?
     """, (today,))
 
-    cur.execute("SELECT BorrowID, DueDate FROM Borrow WHERE Status='Overdue'")
-    for row in cur.fetchall():
-        days = (datetime.strptime(today,"%Y-%m-%d") -
-                datetime.strptime(row["DueDate"],"%Y-%m-%d")).days
-        fine = days * get_fine_per_day()
-        cur.execute("UPDATE Borrow SET FineAmount=? WHERE BorrowID=?", (fine, row["BorrowID"]))
+    fine_per_day = get_fine_per_day()
+    cur.execute("""
+        UPDATE Borrow 
+        SET FineAmount = CAST((julianday(?) - julianday(DueDate)) * ? AS REAL)
+        WHERE Status='Overdue' AND DueDate IS NOT NULL
+    """, (today, fine_per_day))
 
     # Khoa the qua han > 30 ngay va gui email
     cur.execute("""
