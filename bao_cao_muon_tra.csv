@@ -1,0 +1,18 @@
+﻿Mã phiếu,Mã sinh viên,Họ tên,Mã sách,Tên sách,Ngày mượn,Hạn trả,Ngày trả,Trạng thái,Tiền phạt,Thanh toán phạt
+17,GV001,Nguyễn Văn B,BK001,Lập trình Python cơ bản,2026-05-02,2026-05-16,,Borrowing,0.0,Chưa nộp
+16,GV001,Nguyễn Văn B,BK001,Lập trình Python cơ bản,2026-05-02,2026-05-16,,Borrowing,0.0,Chưa nộp
+15,GV001,Nguyễn Văn B,BK003,Giải tích 1,2026-05-02,2026-05-16,,Borrowing,0.0,Chưa nộp
+14,GV001,Nguyễn Văn B,BK001,Lập trình Python cơ bản,2026-05-02,2026-05-16,,Borrowing,0.0,Chưa nộp
+13,GV001,Nguyễn Văn B,BK003,Giải tích 1,2026-05-02,2026-05-16,,Borrowing,0.0,Chưa nộp
+12,GV001,Nguyễn Văn B,BK002,Cơ sở dữ liệu phân tán,2026-05-02,2026-05-16,2026-05-02,Returned,0.0,Chưa nộp
+11,GV001,Nguyễn Văn B,BK001,Lập trình Python cơ bản,2026-05-02,2026-05-16,2026-05-02,Returned,0.0,Chưa nộp
+8,SV2021003,Đặng Văn Long,BK009,Tiếng Anh chuyên ngành IT,2026-04-17,2026-05-01,,Overdue,8000.0,Chưa nộp
+7,SV2023001,Vũ Thị Hoa,BK007,Triết học Mác-Lênin,2026-04-15,2026-04-29,,Overdue,12000.0,Chưa nộp
+2,SV2021001,Nguyễn Văn Thành,BK005,Cấu trúc dữ liệu và giải thuật,2026-04-12,2026-04-26,,Overdue,18000.0,Chưa nộp
+1,SV2021001,Nguyễn Văn Thành,BK001,Lập trình Python cơ bản,2026-04-10,2026-04-24,,Overdue,22000.0,Chưa nộp
+4,SV2022001,Phạm Minh Khoa,BK003,Giải tích 1,2026-04-08,2026-04-22,,Overdue,26000.0,Chưa nộp
+10,SV2022001,Phạm Minh Khoa,BK001,Lập trình Python cơ bản,2026-04-05,2026-04-19,2026-04-18,Returned,0.0,Chưa nộp
+9,SV2021001,Nguyễn Văn Thành,BK002,Cơ sở dữ liệu phân tán,2026-03-31,2026-04-14,2026-04-13,Returned,0.0,Chưa nộp
+5,SV2022002,Trần Ngọc Linh,BK002,Cơ sở dữ liệu phân tán,2026-03-28,2026-04-11,,Overdue,48000.0,Chưa nộp
+3,SV2021002,Lê Thị An,BK006,Mạng máy tính,2026-03-26,2026-04-09,,Overdue,52000.0,Chưa nộp
+6,SV2020001,Hoàng Đức Mạnh,BK004,Clean Code,2026-03-21,2026-04-04,,Lost,200000.0,Chưa nộp

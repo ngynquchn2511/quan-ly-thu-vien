@@ -140,17 +140,15 @@ class LineCompareChart(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.labels = []
-        self.borrow_values = []
-        self.lost_values = []
+        self.series = [] # list of (name, color, values)
         self.title = ""
         self.sub_labels = []
         self.setMinimumHeight(340)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-    def set_series(self, labels, borrow_values, lost_values, title="", sub_labels=None):
+    def set_series(self, labels, series, title="", sub_labels=None):
         self.labels = labels or []
-        self.borrow_values = borrow_values or []
-        self.lost_values = lost_values or []
+        self.series = series or []
         self.title = title
         self.sub_labels = sub_labels or []
         self.update()
@@ -174,7 +172,12 @@ class LineCompareChart(QWidget):
 
         chart_w = W - pad_l - pad_r
         chart_h = H - pad_t - pad_b
-        max_val = max(self.borrow_values + self.lost_values + [1])
+        
+        max_val = 1
+        for name, color, values in self.series:
+            if values:
+                max_val = max(max_val, max(values))
+        max_val = max(max_val, 1)
 
         p.setPen(QPen(QColor(styles.BORDER), 0.5))
         for i in range(5):
@@ -197,17 +200,11 @@ class LineCompareChart(QWidget):
         def calc_points(values):
             return [
                 (xs[i], pad_t + chart_h - int(chart_h * values[i] / max_val if max_val else 0))
-                for i in range(n)
+                for i in range(len(values))
             ]
 
-        borrow_points = calc_points(self.borrow_values)
-        lost_points = calc_points(self.lost_values)
-        green = QColor("#16A34A")
-        blue = QColor("#2563EB")
-
-        def draw_series(points, color, values):
-            if not points:
-                return
+        def draw_series_line(points, color, values):
+            if not points: return
             p.setPen(QPen(color, 3))
             for i in range(len(points) - 1):
                 p.drawLine(points[i][0], points[i][1], points[i + 1][0], points[i + 1][1])
@@ -216,13 +213,13 @@ class LineCompareChart(QWidget):
             for i, (x, y) in enumerate(points):
                 p.drawEllipse(x - 4, y - 4, 8, 8)
                 if values[i] > 0:
-                    p.setPen(QColor(styles.TEXT_DARK))
-                    p.setFont(QFont("Segoe UI", 8, QFont.Bold))
-                    p.drawText(x - 18, y - 20, 36, 14, Qt.AlignCenter, str(values[i]))
+                    p.setPen(color.darker(120))  # Trùng màu đường nhưng đậm hơn một chút
+                    p.setFont(QFont("Segoe UI", 9, QFont.Bold))
+                    p.drawText(x - 18, y - 22, 36, 14, Qt.AlignCenter, str(values[i]))
                     p.setPen(Qt.NoPen)
 
-        draw_series(borrow_points, green, self.borrow_values)
-        draw_series(lost_points, blue, self.lost_values)
+        for name, color, values in self.series:
+            draw_series_line(calc_points(values), color, values)
 
         p.setPen(QPen(QColor(styles.BORDER), 1))
         p.drawLine(pad_l, pad_t, pad_l, base_y)
@@ -232,24 +229,30 @@ class LineCompareChart(QWidget):
             p.setPen(QColor(styles.TEXT_MID))
             p.setFont(QFont("Segoe UI", 8 if n > 12 else 9))
             lbl = self.labels[i]
-            if n > 20 and len(lbl) > 2:
-                lbl = lbl[:2]
+            if n > 20 and len(lbl) > 2: lbl = lbl[:2]
             p.drawText(x - 20, H - pad_b + 8, 40, 16, Qt.AlignCenter, lbl)
             if self.sub_labels:
                 p.setPen(QColor(styles.TEXT_MUTED))
                 p.setFont(QFont("Segoe UI", 8))
                 p.drawText(x - 24, H - pad_b + 24, 48, 14, Qt.AlignCenter, self.sub_labels[i])
 
-        legend_y = H - 28
-        p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(green))
-        p.drawRoundedRect(pad_l + 30, legend_y, 18, 8, 3, 3)
-        p.setBrush(QBrush(blue))
-        p.drawRoundedRect(pad_l + 180, legend_y, 18, 8, 3, 3)
-        p.setPen(QColor(styles.TEXT_MID))
+        # Draw Legend dynamically centered
         p.setFont(QFont("Segoe UI", 9))
-        p.drawText(pad_l + 56, legend_y - 6, 110, 20, Qt.AlignLeft | Qt.AlignVCenter, "Đang mượn")
-        p.drawText(pad_l + 206, legend_y - 6, 90, 20, Qt.AlignLeft | Qt.AlignVCenter, "Mất sách")
+        legend_y = H - 28
+        total_w = 0
+        for name, color, values in self.series:
+            total_w += 18 + 6 + p.fontMetrics().width(name) + 20
+        
+        start_x = pad_l + max(0, (chart_w - total_w) // 2)
+        cx = start_x
+        
+        for name, color, values in self.series:
+            p.setPen(Qt.NoPen)
+            p.setBrush(QBrush(color))
+            p.drawRoundedRect(cx, legend_y, 18, 8, 3, 3)
+            p.setPen(QColor(styles.TEXT_MID))
+            p.drawText(cx + 24, legend_y - 6, 200, 20, Qt.AlignLeft | Qt.AlignVCenter, name)
+            cx += 18 + 6 + p.fontMetrics().width(name) + 20
 
 
 
@@ -609,12 +612,11 @@ class ReportsWindow(QWidget):
         lay.setContentsMargins(24, 18, 24, 18)
         lay.setSpacing(16)
 
-        # 6 card chuc nang
+        # 5 card chuc nang
         grid = QGridLayout(); grid.setSpacing(12)
         cards = [
-            ("📄","Báo cáo mượn trả",    "Xuất Excel theo kỳ",          self._export_borrow),
+            ("📄","Báo cáo mượn & mất sách", "Thống kê biểu đồ và chi tiết",  self._show_borrow_overview),
             ("📊","Thống kê sách",        "Top sách mượn nhiều",         self._show_chart_and_top),
-            ("📚","TK mượn & mất sách",  "Đang cho mượn và sách mất",   self._show_borrow_lost_stats),
             ("⚠", "Danh sách quá hạn",   "Kèm tiền phạt",               self._show_overdue),
             ("👤","Thống kê độc giả",     "Hoạt động theo tháng",        self._show_students),
             ("💰","Báo cáo tiền phạt",    "Tiền phạt thu được",          self._show_fines),
@@ -650,6 +652,23 @@ class ReportsWindow(QWidget):
         self.result_label.setStyleSheet(f"color:{styles.TEXT_DARK}; font-weight:600; border:none;")
         self.result_label.hide()
         lay.addWidget(self.result_label)
+
+        # Bo loc trang thai
+        self.filter_widget = QWidget()
+        flay = QHBoxLayout(self.filter_widget)
+        flay.setContentsMargins(0, 0, 0, 8)
+        lbl = QLabel("Lọc trạng thái:")
+        lbl.setStyleSheet(f"color:{styles.TEXT_DARK}; font-size:14px; border:none;")
+        self.cmb_status_filter = QComboBox()
+        self.cmb_status_filter.setStyleSheet(styles.COMBO)
+        self.cmb_status_filter.addItems(["Tất cả", "Đang mượn", "Đã trả", "Đã mất", "Quá hạn"])
+        self.cmb_status_filter.setFixedWidth(150)
+        self.cmb_status_filter.currentTextChanged.connect(self._apply_borrow_filter)
+        flay.addWidget(lbl)
+        flay.addWidget(self.cmb_status_filter)
+        flay.addStretch()
+        self.filter_widget.hide()
+        lay.addWidget(self.filter_widget)
 
         self.table = QTableWidget()
         self.table.setStyleSheet(styles.TABLE)
@@ -725,6 +744,7 @@ class ReportsWindow(QWidget):
     def _hide_chart(self):
         self.chart_panel.hide()
         self.panel_category.hide()
+        self.filter_widget.hide()
 
     def _show_chart_and_top(self):
         self.chart_panel.external_loader = None
@@ -745,8 +765,56 @@ class ReportsWindow(QWidget):
         self._show_table("Top 10 sách được mượn nhiều nhất",
             ["Tên sách","Tác giả","Số lần mượn"], rows)
 
+    def _load_overdue_chart(self):
+        t = self.chart_panel.cmb_type.currentText()
+        year = self.chart_panel.spn_year.value()
+        month = self.chart_panel.cmb_month.currentData()
+        week = self.chart_panel.spn_week.value()
+        
+        conn = get_connection(); cur = conn.cursor()
+        if t == "Năm":
+            cur.execute("SELECT strftime('%m', DueDate), COUNT(*) FROM Borrow WHERE Status='Overdue' AND strftime('%Y', DueDate)=? GROUP BY strftime('%m', DueDate)", (str(year),))
+            rows = dict(cur.fetchall())
+            data = [(f"T{i}", rows.get(f"{i:02d}", 0)) for i in range(1, 13)]
+            title = f"Sách quá hạn phát sinh theo tháng — Năm {year}"
+        elif t == "Tháng":
+            cur.execute("SELECT strftime('%d', DueDate), COUNT(*) FROM Borrow WHERE Status='Overdue' AND strftime('%Y', DueDate)=? AND strftime('%m', DueDate)=? GROUP BY strftime('%d', DueDate)", (str(year), f"{month:02d}"))
+            rows = dict(cur.fetchall())
+            import calendar
+            days = calendar.monthrange(year, month)[1]
+            data = [(str(d), rows.get(f"{d:02d}", 0)) for d in range(1, days+1)]
+            title = f"Sách quá hạn phát sinh theo ngày — Tháng {month}/{year}"
+        elif t == "Tuần":
+            jan1 = datetime(year, 1, 1)
+            start = jan1 + timedelta(weeks=week-1)
+            start = start - timedelta(days=start.weekday())
+            days_list = [(start + timedelta(days=i)) for i in range(7)]
+            DAY_NAMES = ["T2","T3","T4","T5","T6","T7","CN"]
+            data = []
+            for i, d in enumerate(days_list):
+                cur.execute("SELECT COUNT(*) FROM Borrow WHERE Status='Overdue' AND DueDate=?", (d.strftime("%Y-%m-%d"),))
+                data.append((DAY_NAMES[i], d.strftime("%d/%m"), cur.fetchone()[0]))
+            title = f"Sách quá hạn phát sinh — Tuần {week}/{year}"
+        else:
+            cur.execute("SELECT strftime('%Y', DueDate), COUNT(*) FROM Borrow WHERE Status='Overdue' AND DueDate IS NOT NULL GROUP BY strftime('%Y', DueDate)")
+            rows = cur.fetchall()
+            data = [(r[0], r[1]) for r in rows] if rows else [("Chưa có", 0)]
+            title = "Sách quá hạn phát sinh theo năm"
+            
+        conn.close()
+        
+        self.chart_panel.show()
+        self.chart_panel.external_loader = self._load_overdue_chart
+        self.chart_panel.borrow_lost_chart.hide()
+        self.chart_panel.chart.show()
+        self.chart_panel.chart.set_data(data, title, "#E63946")
+        total = sum(d[-1] for d in data)
+        self.chart_panel.lbl_summary.setText(f"Tổng số sách quá hạn: {total}")
+        self.panel_category.hide()
+
     def _show_overdue(self):
         self._hide_chart()
+        self._load_overdue_chart()
         conn = get_connection(); cur = conn.cursor()
         cur.execute("""
             SELECT s.Name, s.StudentID, bk.Title, b.DueDate,
@@ -761,8 +829,56 @@ class ReportsWindow(QWidget):
         self._show_table(f"Danh sách sách quá hạn ({len(data)} phiếu)",
             ["Họ tên","Mã SV","Tên sách","Hạn trả","Số ngày quá","Tiền phạt"], data)
 
+    def _load_students_chart(self):
+        t = self.chart_panel.cmb_type.currentText()
+        year = self.chart_panel.spn_year.value()
+        month = self.chart_panel.cmb_month.currentData()
+        week = self.chart_panel.spn_week.value()
+        
+        conn = get_connection(); cur = conn.cursor()
+        if t == "Năm":
+            cur.execute("SELECT strftime('%m', BorrowDate), COUNT(*) FROM Borrow WHERE strftime('%Y', BorrowDate)=? GROUP BY strftime('%m', BorrowDate)", (str(year),))
+            rows = dict(cur.fetchall())
+            data = [(f"T{i}", rows.get(f"{i:02d}", 0)) for i in range(1, 13)]
+            title = f"Lượt mượn sách theo tháng — Năm {year}"
+        elif t == "Tháng":
+            cur.execute("SELECT strftime('%d', BorrowDate), COUNT(*) FROM Borrow WHERE strftime('%Y', BorrowDate)=? AND strftime('%m', BorrowDate)=? GROUP BY strftime('%d', BorrowDate)", (str(year), f"{month:02d}"))
+            rows = dict(cur.fetchall())
+            import calendar
+            days = calendar.monthrange(year, month)[1]
+            data = [(str(d), rows.get(f"{d:02d}", 0)) for d in range(1, days+1)]
+            title = f"Lượt mượn sách theo ngày — Tháng {month}/{year}"
+        elif t == "Tuần":
+            jan1 = datetime(year, 1, 1)
+            start = jan1 + timedelta(weeks=week-1)
+            start = start - timedelta(days=start.weekday())
+            days_list = [(start + timedelta(days=i)) for i in range(7)]
+            DAY_NAMES = ["T2","T3","T4","T5","T6","T7","CN"]
+            data = []
+            for i, d in enumerate(days_list):
+                cur.execute("SELECT COUNT(*) FROM Borrow WHERE BorrowDate=?", (d.strftime("%Y-%m-%d"),))
+                data.append((DAY_NAMES[i], d.strftime("%d/%m"), cur.fetchone()[0]))
+            title = f"Lượt mượn sách — Tuần {week}/{year}"
+        else:
+            cur.execute("SELECT strftime('%Y', BorrowDate), COUNT(*) FROM Borrow WHERE BorrowDate IS NOT NULL GROUP BY strftime('%Y', BorrowDate)")
+            rows = cur.fetchall()
+            data = [(r[0], r[1]) for r in rows] if rows else [("Chưa có", 0)]
+            title = "Lượt mượn sách theo năm"
+            
+        conn.close()
+        
+        self.chart_panel.show()
+        self.chart_panel.external_loader = self._load_students_chart
+        self.chart_panel.borrow_lost_chart.hide()
+        self.chart_panel.chart.show()
+        self.chart_panel.chart.set_data(data, title, "#2A9D8F")
+        total = sum(d[-1] for d in data)
+        self.chart_panel.lbl_summary.setText(f"Tổng lượt mượn trong kỳ: {total}")
+        self.panel_category.hide()
+
     def _show_students(self):
         self._hide_chart()
+        self._load_students_chart()
         conn = get_connection(); cur = conn.cursor()
         cur.execute("""
             SELECT s.Name, s.StudentID, s.Faculty, COUNT(b.BorrowID) as total
@@ -773,8 +889,58 @@ class ReportsWindow(QWidget):
         self._show_table("Thống kê mượn sách theo độc giả",
             ["Họ tên","Mã SV","Khoa","Tổng lượt mượn"], rows)
 
+    def _load_fines_chart(self):
+        t = self.chart_panel.cmb_type.currentText()
+        year = self.chart_panel.spn_year.value()
+        month = self.chart_panel.cmb_month.currentData()
+        week = self.chart_panel.spn_week.value()
+        
+        conn = get_connection(); cur = conn.cursor()
+        if t == "Năm":
+            cur.execute("SELECT strftime('%m', ReturnDate), SUM(FineAmount) FROM Borrow WHERE FineAmount > 0 AND strftime('%Y', ReturnDate)=? GROUP BY strftime('%m', ReturnDate)", (str(year),))
+            rows = dict((k, v or 0) for k, v in cur.fetchall())
+            data = [(f"T{i}", int(rows.get(f"{i:02d}", 0)//1000)) for i in range(1, 13)]
+            title = f"Tiền phạt thu được theo tháng (Nghìn VNĐ) — Năm {year}"
+        elif t == "Tháng":
+            cur.execute("SELECT strftime('%d', ReturnDate), SUM(FineAmount) FROM Borrow WHERE FineAmount > 0 AND strftime('%Y', ReturnDate)=? AND strftime('%m', ReturnDate)=? GROUP BY strftime('%d', ReturnDate)", (str(year), f"{month:02d}"))
+            rows = dict((k, v or 0) for k, v in cur.fetchall())
+            import calendar
+            days = calendar.monthrange(year, month)[1]
+            data = [(str(d), int(rows.get(f"{d:02d}", 0)//1000)) for d in range(1, days+1)]
+            title = f"Tiền phạt thu được (Nghìn VNĐ) — Tháng {month}/{year}"
+        elif t == "Tuần":
+            jan1 = datetime(year, 1, 1)
+            start = jan1 + timedelta(weeks=week-1)
+            start = start - timedelta(days=start.weekday())
+            days_list = [(start + timedelta(days=i)) for i in range(7)]
+            DAY_NAMES = ["T2","T3","T4","T5","T6","T7","CN"]
+            data = []
+            for i, d in enumerate(days_list):
+                cur.execute("SELECT SUM(FineAmount) FROM Borrow WHERE FineAmount > 0 AND ReturnDate=?", (d.strftime("%Y-%m-%d"),))
+                val = cur.fetchone()[0] or 0
+                data.append((DAY_NAMES[i], d.strftime("%d/%m"), int(val//1000)))
+            title = f"Tiền phạt (Nghìn VNĐ) — Tuần {week}/{year}"
+        else:
+            cur.execute("SELECT strftime('%Y', ReturnDate), SUM(FineAmount) FROM Borrow WHERE FineAmount > 0 AND ReturnDate IS NOT NULL GROUP BY strftime('%Y', ReturnDate)")
+            rows = cur.fetchall()
+            data = [(r[0], int((r[1] or 0)//1000)) for r in rows] if rows else [("Chưa có", 0)]
+            title = "Tiền phạt thu được theo năm (Nghìn VNĐ)"
+            
+        conn.close()
+        
+        self.chart_panel.show()
+        self.chart_panel.external_loader = self._load_fines_chart
+        self.chart_panel.borrow_lost_chart.hide()
+        self.chart_panel.chart.show()
+        self.chart_panel.chart.set_data(data, title, "#E76F51")
+        total = sum(d[-1] for d in data) * 1000
+        self.chart_panel.lbl_summary.setText(f"Tổng tiền phạt: {total:,} VNĐ")
+        self.panel_category.hide()
+
     def _show_fines(self):
         self._hide_chart()
+        self._load_fines_chart()
+
         conn = get_connection(); cur = conn.cursor()
         cur.execute("""
             SELECT s.Name, s.StudentID, b.DueDate, b.ReturnDate, b.FineAmount,
@@ -787,60 +953,171 @@ class ReportsWindow(QWidget):
         self._show_table(f"Báo cáo tiền phạt ({len(data)} phiếu)",
             ["Họ tên","Mã SV","Hạn trả","Ngày trả","Tiền phạt","Trạng thái"], data)
 
-    def _show_borrow_lost_stats(self):
+    def _load_borrow_overview_chart(self):
         t = self.chart_panel.cmb_type.currentText()
         year = self.chart_panel.spn_year.value()
         month = self.chart_panel.cmb_month.currentData()
         week = self.chart_panel.spn_week.value()
+        
+        status_selected = self.cmb_status_filter.currentText()
 
         if t == "Năm":
-            labels, borrow_values, lost_values, sub_labels = query_borrow_lost_by_year(year)
-            title = f"Sách đang mượn và mất sách theo tháng — Năm {year}"
+            group_expr = "strftime('%m', BorrowDate)"
+            date_cond = f"strftime('%Y', BorrowDate)='{year}'"
+            labels_all = [f"T{i}" for i in range(1, 13)]
+            keys_all = [f"{i:02d}" for i in range(1, 13)]
+            title_time = f"theo tháng — Năm {year}"
         elif t == "Tháng":
-            labels, borrow_values, lost_values, sub_labels = query_borrow_lost_by_month(year, month)
-            title = f"Sách đang mượn và mất sách theo ngày — Tháng {month}/{year}"
+            group_expr = "strftime('%d', BorrowDate)"
+            date_cond = f"strftime('%Y', BorrowDate)='{year}' AND strftime('%m', BorrowDate)='{month:02d}'"
+            import calendar
+            days = calendar.monthrange(year, month)[1]
+            labels_all = [str(d) for d in range(1, days+1)]
+            keys_all = [f"{d:02d}" for d in range(1, days+1)]
+            title_time = f"theo ngày — Tháng {month}/{year}"
         elif t == "Tuần":
-            labels, borrow_values, lost_values, sub_labels = query_borrow_lost_by_week(year, week)
-            title = f"Sách đang mượn và mất sách — Tuần {week}/{year}"
+            group_expr = "BorrowDate"
+            jan1 = datetime(year, 1, 1)
+            start = jan1 + timedelta(weeks=week-1)
+            start = start - timedelta(days=start.weekday())
+            days_dt = [(start + timedelta(days=i)) for i in range(7)]
+            days_str = ",".join(f"'{d.strftime('%Y-%m-%d')}'" for d in days_dt)
+            date_cond = f"BorrowDate IN ({days_str})"
+            DAY_NAMES = ["T2","T3","T4","T5","T6","T7","CN"]
+            labels_all = DAY_NAMES
+            keys_all = [d.strftime('%Y-%m-%d') for d in days_dt]
+            title_time = f"— Tuần {week}/{year}"
         else:
-            labels, borrow_values, lost_values, sub_labels = query_borrow_lost_all_time()
-            title = "Sách đang mượn và mất sách theo năm"
+            group_expr = "strftime('%Y', BorrowDate)"
+            date_cond = "1=1"
+            title_time = "theo năm"
 
-        total_borrowing = sum(borrow_values)
-        total_lost = sum(lost_values)
+        conn = get_connection(); cur = conn.cursor()
+        
+        if t == "Tất cả thời gian":
+            cur.execute(f"SELECT {group_expr} FROM Borrow WHERE BorrowDate IS NOT NULL GROUP BY {group_expr}")
+            keys_all = sorted([r[0] for r in cur.fetchall()])
+            labels_all = keys_all
+
+        def get_data_for_status(status_cond):
+            if t == "Tất cả thời gian":
+                cur.execute(f"SELECT {group_expr}, COUNT(*) FROM Borrow WHERE {status_cond} AND BorrowDate IS NOT NULL GROUP BY {group_expr}")
+            else:
+                cur.execute(f"SELECT {group_expr}, COUNT(*) FROM Borrow WHERE {status_cond} AND {date_cond} GROUP BY {group_expr}")
+            rows = dict(cur.fetchall())
+            return [rows.get(k, 0) for k in keys_all]
 
         self.chart_panel.show()
-        self.chart_panel.external_loader = self._show_borrow_lost_stats
-        self.chart_panel.chart.hide()
-        self.chart_panel.borrow_lost_chart.show()
-        self.chart_panel.borrow_lost_chart.set_series(
-            labels,
-            borrow_values,
-            lost_values,
-            title,
-            sub_labels
-        )
-        self.chart_panel.lbl_summary.setText(
-            f"Tổng đang cho mượn: {total_borrowing}  •  Tổng mất sách: {total_lost}")
-        self.panel_category.hide()
+        self.chart_panel.external_loader = self._load_borrow_overview_chart
+        
+        if status_selected == "Tất cả":
+            val_muon = get_data_for_status("Status='Borrowing'")
+            val_tra = get_data_for_status("Status='Returned'")
+            val_mat = get_data_for_status("Status='Lost'")
+            
+            series = [
+                ("Đã trả", QColor("#10B981"), val_tra),      # Xanh ngọc lục bảo (Emerald)
+                ("Đang mượn", QColor("#3B82F6"), val_muon),  # Xanh dương sáng (Blue)
+                ("Đã mất", QColor("#6B7280"), val_mat)       # Xám đậm (Gray)
+            ]
+            title = f"Thống kê tổng quan {title_time}"
+            self.chart_panel.chart.hide()
+            self.chart_panel.borrow_lost_chart.show()
+            self.chart_panel.borrow_lost_chart.set_series(labels_all, series, title)
+            total_chart = sum(val_muon) + sum(val_tra) + sum(val_mat)
+        else:
+            status_map = {
+                'Đang mượn': ("Status='Borrowing'", "#3B82F6"),
+                'Đã trả': ("Status='Returned'", "#10B981"),
+                'Đã mất': ("Status='Lost'", "#6B7280"),
+                'Quá hạn': ("Status='Overdue'", "#EF4444")   # Đỏ rực
+            }
+            status_cond, color = status_map[status_selected]
+            vals = get_data_for_status(status_cond)
+            data = [(labels_all[i], vals[i]) for i in range(len(keys_all))] if keys_all else [("Chưa có", 0)]
+            title = f"Giao dịch '{status_selected}' {title_time}"
+            
+            self.chart_panel.borrow_lost_chart.hide()
+            self.chart_panel.chart.show()
+            self.chart_panel.chart.set_data(data, title, color)
+            total_chart = sum(vals)
+        
+        cur.execute(f"""
+            SELECT 
+                COUNT(*),
+                SUM(CASE WHEN Status IN ('Borrowing', 'Overdue') THEN 1 ELSE 0 END),
+                SUM(CASE WHEN Status='Returned' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN Status='Lost' THEN 1 ELSE 0 END)
+            FROM Borrow WHERE {date_cond}
+        """)
+        row = cur.fetchone()
+        self._tong = row[0] or 0
+        self._dang_muon = row[1] or 0
+        self._da_tra = row[2] or 0
+        self._da_mat = row[3] or 0
+        
+        cur.execute(f"""
+            SELECT bk.Title, s.Name, s.StudentID, b.BorrowDate, b.Status, b.FineAmount
+            FROM Borrow b
+            JOIN Students s ON b.StudentID = s.StudentID
+            JOIN Books bk ON b.BookID = bk.BookID
+            WHERE {date_cond}
+            ORDER BY 
+                CASE b.Status 
+                    WHEN 'Lost' THEN 1
+                    WHEN 'Overdue' THEN 2
+                    WHEN 'Borrowing' THEN 3
+                    WHEN 'Returned' THEN 4
+                    ELSE 5
+                END,
+                b.BorrowDate DESC
+        """)
+        self._all_borrow_rows = cur.fetchall()
+        conn.close()
+        
+        self.chart_panel.lbl_summary.setText(f"Tổng số trên biểu đồ: {total_chart} phiếu")
+        
+        self.filter_widget.show()
+        self._apply_borrow_filter_table()
 
-        data = [(labels[i], borrow_values[i], lost_values[i]) for i in range(len(labels))]
+    def _show_borrow_overview(self):
+        self._hide_chart()
+        self.cmb_status_filter.blockSignals(True)
+        self.cmb_status_filter.setCurrentIndex(0)
+        self.cmb_status_filter.blockSignals(False)
+        self._load_borrow_overview_chart()
+
+    def _apply_borrow_filter(self):
+        self._load_borrow_overview_chart()
+
+    def _apply_borrow_filter_table(self):
+        if not hasattr(self, '_all_borrow_rows'):
+            return
+
+        status_trans = {
+            'Lost': 'Đã mất',
+            'Overdue': 'Quá hạn',
+            'Borrowing': 'Đang mượn',
+            'Returned': 'Đã trả'
+        }
+
+        selected = self.cmb_status_filter.currentText()
+        data = []
+        for r in self._all_borrow_rows:
+            st_en = r[4]
+            st_vn = status_trans.get(st_en, st_en)
+            
+            if selected != "Tất cả" and st_vn != selected:
+                continue
+                
+            fine = f"{r[5]:,.0f}đ" if r[5] else ""
+            data.append((r[0], r[1], r[2], r[3], st_vn, fine))
+            
+        title = (f"TỔNG QUAN KỲ NÀY: Đang mượn: {self._dang_muon} | Đã trả: {self._da_tra} | Đã mất: {self._da_mat} | Tổng: {self._tong}\n\n"
+                 f"DANH SÁCH CHI TIẾT GIAO DỊCH ({len(data)} cuốn)")
+        
         self._show_table(
-            f"Thống kê mượn và mất sách theo thời gian ({len(data)} mốc)",
-            ["Thời gian", "Đang mượn", "Mất sách"],
+            title,
+            ["Tên sách", "Độc giả mượn", "Mã SV", "Ngày mượn", "Trạng thái", "Tiền phạt"],
             data
         )
-
-    def _export_borrow(self):
-        self._hide_chart()
-        try:
-            from reports.export_excel import export_borrow_report
-            path, _ = QFileDialog.getSaveFileName(
-                self,"Lưu file","bao_cao_muon_tra.csv","CSV (*.csv)")
-            if path:
-                export_borrow_report(path)
-                show_msg(self,"Thành công",f"Đã xuất file:\n{path}")
-        except ImportError:
-            show_msg(self,"Thiếu thư viện","Vui lòng cài: pip install pandas openpyxl")
-        except Exception as e:
-            show_msg(self,"Lỗi",str(e))
